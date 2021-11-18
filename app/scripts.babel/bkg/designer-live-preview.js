@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+let userCookies = "";
 let redirectedUrls = {};
 let nuxeoBaseUrl = 'http://localhost:8080/nuxeo/';
 const storeRedirectedUrlsLocally = (baseUrl, json) => {
@@ -58,22 +59,29 @@ const addCookieHeaderForConnectRequest = (details) => {
   }
 
   // We need to add cookies as they are stripped by browser
-  return browser.cookies
-    .getAll({ domain: CONNECT_DOMAIN })
-    .then((cookies) => {
-      const cookieHeader = cookies
-        .map(x => x.name + '=' + x.value)
-        .join('; ')
-
-      requestHeaders.push({
-        name: 'Cookie',
-        value: cookieHeader,
-      });
-
-      return {
-        requestHeaders,
-      };
-    });
+  requestHeaders.push({
+    name: 'Cookie',
+    value: userCookies,
+  })
+  return {
+    requestHeaders
+  }
+  // return browser.cookies
+  //   .getAll({ domain: CONNECT_DOMAIN })
+  //   .then((cookies) => {
+  //     const cookieHeader = cookies
+  //       .map(x => x.name + '=' + x.value)
+  //       .join('; ')
+  //
+  //     requestHeaders.push({
+  //       name: 'Cookie',
+  //       value: cookieHeader,
+  //     });
+  //
+  //     return {
+  //       requestHeaders,
+  //     };
+  //   });
 };
 
 
@@ -107,10 +115,21 @@ const revertToDefault = (details) => {
   }
 };
 
+
+
 const enable = (projectName, nuxeoInstanceBaseUrl) => {
   // URL's port is not allowed in urlPattern, thus had to be removed.
   nuxeoBaseUrl = nuxeoInstanceBaseUrl;
   const urlPattern = `${nuxeoInstanceBaseUrl.replace(/:\d+/, '')}*`;
+
+  browser.cookies
+    .getAll({ domain: CONNECT_DOMAIN })
+    .then((cookies) => {
+      const cookieHeader = cookies
+        .map(x => x.name + '=' + x.value)
+        .join('; ');
+      userCookies = cookieHeader;
+    })
 
   browser.webRequest.onBeforeRequest.addListener(redirectRequestToConnectIfNeeded, {
     urls: [urlPattern],
@@ -120,9 +139,10 @@ const enable = (projectName, nuxeoInstanceBaseUrl) => {
     urls: [`${CONNECT_URL}/nuxeo/site/studio/v2/project/${projectName}/workspace/ws.resources`],
   }, ['requestBody']);
 
+  // https://groups.google.com/a/chromium.org/g/chromium-extensions/c/vYIaeezZwfQ
   browser.webRequest.onBeforeSendHeaders.addListener(addCookieHeaderForConnectRequest, {
     urls: [`${CONNECT_URL}/*`],
-  }, ['blocking', 'requestHeaders']);
+  }, ['blocking', 'requestHeaders', 'extraHeaders']);
 
   browser.webRequest.onCompleted.addListener(revertToDefault, {
     urls: [`${CONNECT_URL}/*`],

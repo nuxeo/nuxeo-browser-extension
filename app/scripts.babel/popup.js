@@ -193,10 +193,6 @@ limitations under the License.
       if (app.browser.name === 'Firefox') {
         adjustStorageButtons();
       }
-      // BDE-187: Hide the Designer Live Preview button if the current browser is not Firefox
-      if (app.browser.name !== 'Firefox') {
-        $('#designer-livepreview').hide();
-      }
 
       $('#searchclear').click(() => {
         $('#search').val('');
