@@ -139,10 +139,14 @@ const enable = (projectName, nuxeoInstanceBaseUrl) => {
     urls: [`${CONNECT_URL}/nuxeo/site/studio/v2/project/${projectName}/workspace/ws.resources`],
   }, ['requestBody']);
 
+  let extraInfoSpec = ['blocking', 'requestHeaders']
+  if (browser.webRequest.OnBeforeSendHeadersOptions.hasOwnProperty('EXTRA_HEADERS')) {
+    extraInfoSpec.push('extraHeaders');
+  }
   // https://groups.google.com/a/chromium.org/g/chromium-extensions/c/vYIaeezZwfQ
   browser.webRequest.onBeforeSendHeaders.addListener(addCookieHeaderForConnectRequest, {
     urls: [`${CONNECT_URL}/*`],
-  }, ['blocking', 'requestHeaders', 'extraHeaders']);
+  }, extraInfoSpec);
 
   browser.webRequest.onCompleted.addListener(revertToDefault, {
     urls: [`${CONNECT_URL}/*`],
