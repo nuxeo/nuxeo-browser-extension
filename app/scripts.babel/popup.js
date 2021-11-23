@@ -287,7 +287,7 @@ limitations under the License.
       regexes.jsf.doc = new RegExp(`/nuxeo/(${regexes.jsf.nxpath.source}|${regexes.jsf.nxdoc.source})`);
 
       regexes.ui = {};
-      regexes.ui.browse = new RegExp(`(?:browse(?<path>\/.+?(?=\\?|$)))`);
+      regexes.ui.browse = new RegExp('(?:browse(?<path>\/.+?(?=\\?|$)))');
       regexes.ui.docid = new RegExp(`(?:doc[\/A-Za-z_\.0-9]+(?<docid>${regexes.uuid.source}))`);
       regexes.ui.doc = new RegExp(`/nuxeo(?:/repo/(?<repo>${regexes.repo.source})|)/ui/#!/(?:${regexes.ui.browse.source}|${regexes.ui.docid.source})`);
 
@@ -324,7 +324,7 @@ limitations under the License.
                 throw new Error(error);
               });
           } else {
-            const jsonUrl = `${nuxeo._baseURL}api/v1/repo/${repository}/id/${input}?enrichers.document=acls,permissions&properties=*`
+            const jsonUrl = `${nuxeo._baseURL}api/v1/repo/${repository}/id/${input}?enrichers.document=acls,permissions&properties=*`;
             app.browser.createTabs(jsonUrl, bkg.studioExt.server.tabId);
           }
         });
@@ -428,7 +428,6 @@ limitations under the License.
             exportCurrentLink(groups.path || groups.docid);
           }
         }
-
       });
 
       let height = $('html').height();
