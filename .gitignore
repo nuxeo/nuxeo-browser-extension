@@ -13,3 +13,8 @@ target
 test*/screenshots/*.png
 ftest/src/test/resources/instance.clid
 /.idea/
+.classpath
+.project
+ftest/.settings/
+selenium-standalone.txt
+.local

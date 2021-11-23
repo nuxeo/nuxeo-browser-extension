@@ -1,0 +1,18 @@
+apiVersion: kpt.dev/v1
+kind: Kptfile
+metadata:
+  name: jenkins-trigger
+upstream:
+  type: git
+  git:
+    repo: https://github.com/nuxeo/nos-jx-make.d
+    directory: /tekton/packs/jenkins-trigger
+    ref: master
+  updateStrategy: resource-merge
+upstreamLock:
+  type: git
+  git:
+    repo: https://github.com/nuxeo/nos-jx-make.d
+    directory: /tekton/packs/jenkins-trigger
+    ref: master
+    commit: 130c6fe02e26344a543f644559766a7c01cdeed5

@@ -1,71 +1,108 @@
- properties([
-    [$class: 'BuildDiscarderProperty', strategy: [$class: 'LogRotator', daysToKeepStr: '60', numToKeepStr: '60', artifactNumToKeepStr: '1']],
-    pipelineTriggers([cron('0 2 * * *')])
- ])
+/*
+ * (C) Copyright 2021 Nuxeo (http://nuxeo.com/) and others.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * Contributors:
+ *     Nuxeo
+ */
 
-def formatSlack(begin) {
-  return "${begin} <${currentBuild.absoluteUrl}|${env.JOB_NAME}>";
-}
+def volumeName = env.JOB_NAME.replaceAll('/','-').toLowerCase()
 
-def archive_paths = "ftest/target/tomcat/log/*.log, test/screenshots/**, package/**"
+def pullRequestLabels = []
 
-node(env.SLAVE) {
-    sh "echo ${env.SLAVE}"
-    try {
-        timestamps {
-            timeout(60) {
-                stage('checkout') {
-                    // manually clean before checkout
-                    sh "rm -rf node_modules"
+def containerScript = ""
 
-                    checkout scm
-                }
+bootstrapTemplate = readTrusted('Jenkinsfile-pod.yaml')
+env.setProperty('POD_TEMPLATE', bootstrapTemplate)
 
-                stage ('build and test') {
-                    withCredentials([usernamePassword(
-                        credentialsId: 'bde-connect-creds-ft',
-                        passwordVariable: 'CONNECT_CREDS_PSW',
-                        usernameVariable: 'CONNECT_CREDS_USR')]) {
-                            def jdk = tool name: 'java-11-openjdk'
-                            env.JAVA_HOME = "${jdk}"
-                            def mvnHome = tool name: 'maven-3.3', type: 'hudson.tasks.Maven$MavenInstallation'
-                            sh "set +x; echo ${env.CLID}  | sed 's/--/\\n/' >${env.RESOURCES_PATH}/instance.clid"
-                            sh "${mvnHome}/bin/mvn clean verify -f ${env.POM_PATH} -DconnectUsr=${env.CONNECT_CREDS_USR} -DconnectPsw=${env.CONNECT_CREDS_PSW}"
+pipeline {
+    options {
+        skipDefaultCheckout()
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(daysToKeepStr: '60', numToKeepStr: '60', artifactNumToKeepStr: '1'))
+    }
+    agent {
+        kubernetes {
+            yamlMergeStrategy override()
+            yaml "${POD_TEMPLATE}"
+            defaultContainer 'maven'
+        }
+    }
+    environment {
+        ORG = 'nuxeo'
+        APP_NAME = 'nuxeo-browser-extension'
+    }
+    stages {
+        stage('Prepare workspace') {
+            steps {
+                container('jnlp') {
+                    script {
+                        def scmvars = checkout scm: [
+                            $class: 'GitSCM',
+                            branches: scm.branches,
+                            doGenerateSubmoduleConfigurations: false,
+                            extensions: [[$class: 'LocalBranch', localBranch: '**'],
+                                         [$class: 'CloneOption', noTags: false],
+                                         [$class: 'SubmoduleOption',
+                                          disableSubmodules: false,
+                                          parentCredentials: true,
+                                          recursiveSubmodules: true,
+                                          reference: '',
+                                          trackingSubmodules: false]],
+                            submoduleCfg: [],
+                            userRemoteConfigs: scm.userRemoteConfigs
+                        ]
+                        scmvars.each { key, val -> env.setProperty(key, val) }
                     }
                 }
-
-                stage ('post build') {
-                    step([$class: 'WarningsPublisher', canComputeNew: false, canResolveRelativePaths: false,
-                        consoleParsers: [[parserName: 'Maven']], defaultEncoding: '', excludePattern: '',
-                        healthy: '', includePattern: '', messagesPattern: '', unHealthy: ''])
-                    step([$class: 'CucumberReportPublisher', jsonReportDirectory: 'ftest/target/cucumber-reports/', fileIncludePattern: '*.json'])
-                    archiveArtifacts "${archive_paths}"
-                    // TODO cobertura coverage
-                    if (env.BRANCH_NAME == 'master' || env.BRANCH_NAME == '1010' || env.BRANCH_NAME == '910' || env.BRANCH_NAME == '810') {
-                        git poll: false, url: 'git@github.com:nuxeo/nuxeo-browser-extension.git'
-                        step([$class: 'JiraIssueUpdater', issueSelector: [$class: 'DefaultIssueSelector'], scm: scm])
-                    }
-                    def status = currentBuild.result == null ? 'SUCCESS' : currentBuild.result;
-                    if(currentBuild.getPreviousBuild() != null && 'SUCCESS' != currentBuild.getPreviousBuild().getResult()) {
-                        mail (to: 'ecm@lists.nuxeo.com', subject: "${env.JOB_NAME} (${env.BUILD_NUMBER}) - Back to normal",
-                            body: "Build back to normal: ${env.BUILD_URL}.")
-                        slackSend color: '#5FB404', channel: "${env.SLACK_CHANNEL}", message: formatSlack(status) + ' - *Back to normal!* :sparkles:'
+                container('maven') {
+                    sh 'rm -fr .tmp && make workspace'
+                }
+            }
+        }
+        stage('Install, run lint and build') {
+            steps {
+                gitStatusWrapper(credentialsId: 'pipeline-git-github',
+                                         gitHubContext: 'install-lint-build',
+                                         description: 'install, run lint and build',
+                                         successDescription: 'install, run lint and build',
+                                         failureDescription: 'install, run lint and build failed') {
+                    container('maven') {
+                        sh "make install-and-build"
                     }
                 }
             }
         }
-    } catch(e) {
-        currentBuild.result = "FAILURE"
-        step([$class: 'ClaimPublisher'])
-        archiveArtifacts "${archive_paths}"
-
-        mail (to: 'ecm@lists.nuxeo.com', subject: "${env.JOB_NAME} (${env.BUILD_NUMBER}) - Failure!",
-            body: "Build failed ${env.BUILD_URL}.")
-        step([$class: 'CucumberReportPublisher', jsonReportDirectory: 'ftest/target/cucumber-reports/', fileIncludePattern: '*.json'])
-        slackSend color: '#FF4000', channel: "${env.SLACK_CHANNEL}", message: formatSlack('FAILURE') + " ```${e.message}```"
-        throw e
-    } finally {
-        step([$class: 'CheckStylePublisher', canComputeNew: false, defaultEncoding: '', healthy: '',
-            pattern: 'ftest/target/checkstyle-result.xml', unHealthy: ''])
+        stage('Run tests') {
+            steps {
+                gitStatusWrapper(credentialsId: 'pipeline-git-github',
+                                         gitHubContext: 'run-tests',
+                                         description: 'run tests',
+                                         successDescription: 'run tests',
+                                         failureDescription: 'run tests failed') {
+                    container('maven') {
+                        sh "make test"
+                    }
+                }
+            }
+        }
     }
+}
+
+def notifyIfMaster() {
+  if (BRANCH_NAME != 'master') {
+    return
+  }
+  step([$class: 'JiraIssueUpdater', issueSelector: [$class: 'DefaultIssueSelector'], scm: scm])
 }
