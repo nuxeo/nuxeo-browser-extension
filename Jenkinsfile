@@ -84,7 +84,7 @@ pipeline {
                 }
             }
         }
-        stage('Run tests') {
+        /*stage('Run tests') {
             steps {
                 gitStatusWrapper(credentialsId: 'pipeline-git-github',
                                          gitHubContext: 'run-tests',
@@ -94,6 +94,21 @@ pipeline {
                     container('maven') {
                         sh "make test"
                     }
+                }
+            }
+        }*/
+        stage('Publish release') {
+            when {
+                buildingTag()
+            }
+            steps {
+                gitStatusWrapper(credentialsId: 'pipeline-git-github',
+                                    gitHubContext: 'publish-release',
+                                    description: 'release and publish released artifacts',
+                                    successDescription: 'release and publish released artifacts',
+                                    failureDescription: 'release and publish released artifacts failed') {
+                    sh 'make release'
+                    sh 'make publish-release-gh'
                 }
             }
         }

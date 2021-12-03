@@ -48,6 +48,15 @@ function readVersion(vendor) {
   return manifest.version.split('\.');
 }
 
+// Get version from tag
+function readTagVersion() {
+  // Read the version from the env variable
+  const tagVersion = process.env.TAG_VERSION;
+  // Remove the tag prefix to keep only the 'X.X.X'
+  const regEx = /[0-9]+.[0-9]+.[0-9]+/g;
+  return tagVersion.match(regEx)[0];
+}
+
 // Create timestamped build version
 function buildVersion(vendor) {
   let [major, minor, build] = readVersion(vendor);
@@ -518,18 +527,8 @@ gulp.task('package:chrome', gulp.series('build:chrome', 'zip:chrome'));
 
 gulp.task('package:firefox', gulp.series('build:firefox', 'zip:firefox'));
 
-gulp.task('version:fix', done => {
-  version = fixVersion('chrome');
-  done();
-});
-
-gulp.task('version:minor', done => {
-  version = minorVersion('chrome');
-  done();
-});
-
-gulp.task('version:major', done => {
-  version = majorVersion('chrome');
+gulp.task('version:setversion', (done) => {
+  version = readTagVersion();
   done();
 });
 
@@ -545,54 +544,12 @@ gulp.task('package',
   )
 );
 
-gulp.task('release:fix',
-  gulp.series(
-    'clean',
-    'copyright',
-    'build:base',
-    'version:fix',
-    gulp.parallel(
-      'build:chrome',
-      'build:firefox'
-    ),
-    gulp.parallel(
-      'version:chrome',
-      'version:firefox'
-    ),
-    gulp.parallel(
-      'zip:chrome',
-      'zip:firefox'
-    )
-  )
-);
-
 gulp.task('release',
   gulp.series(
     'clean',
     'copyright',
     'build:base',
-    'version:minor',
-    gulp.parallel(
-      'build:chrome',
-      'build:firefox'
-    ),
-    gulp.parallel(
-      'version:chrome',
-      'version:firefox'
-    ),
-    gulp.parallel(
-      'zip:chrome',
-      'zip:firefox'
-    )
-  )
-);
-
-gulp.task('release:major',
-  gulp.series(
-    'clean',
-    'copyright',
-    'build:base',
-    'version:major',
+    'version:setversion',
     gulp.parallel(
       'build:chrome',
       'build:firefox'
