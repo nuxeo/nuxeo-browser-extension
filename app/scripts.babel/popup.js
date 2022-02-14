@@ -284,12 +284,12 @@ limitations under the License.
       regexes.jsf = {};
       regexes.jsf.nxpath = new RegExp(`(?:nxpath/(?<repoPath>${regexes.repo.source})(?<path>${regexes.path.source}))`);
       regexes.jsf.nxdoc = new RegExp(`(?:nxdoc/(?<repoId>${regexes.repo.source})/(?<docid>${regexes.uuid.source}))`);
-      regexes.jsf.doc = new RegExp(`/nuxeo/(${regexes.jsf.nxpath.source}|${regexes.jsf.nxdoc.source})`);
+      regexes.jsf.doc = new RegExp(`/(${regexes.jsf.nxpath.source}|${regexes.jsf.nxdoc.source})`);
 
       regexes.ui = {};
       regexes.ui.browse = new RegExp('(?:browse(?<path>\/.+?(?=\\?|$)))');
       regexes.ui.docid = new RegExp(`(?:doc[\/A-Za-z_\.0-9]+(?<docid>${regexes.uuid.source}))`);
-      regexes.ui.doc = new RegExp(`/nuxeo(?:/repo/(?<repo>${regexes.repo.source})|)/ui/#!/(?:${regexes.ui.browse.source}|${regexes.ui.docid.source})`);
+      regexes.ui.doc = new RegExp(`/(?:repo/(?<repo>${regexes.repo.source})|)ui/#!/(?:${regexes.ui.browse.source}|${regexes.ui.docid.source})`);
 
       function getJsonFromPath(input) {
         input = decodeURIComponent(input);
