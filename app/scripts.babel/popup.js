@@ -26,7 +26,7 @@ limitations under the License.
     import org.nuxeo.ecm.admin.runtime.RuntimeInstrospection;
     import org.nuxeo.runtime.api.Framework;
 
-    def pm = Framework.getLocalService(PackageManager.class);
+    def pm = Framework.getService(PackageManager.class);
     def snapshotPkg = StudioSnapshotHelper.getSnapshot(pm.listRemoteAssociatedStudioPackages());
     def pkgName = snapshotPkg == null ? null : snapshotPkg.getName();
     def bundles = RuntimeInstrospection.getInfo();
@@ -37,7 +37,7 @@ limitations under the License.
     import org.nuxeo.connect.packages.PackageManager;
     import org.nuxeo.runtime.api.Framework;
 
-    def pm = Framework.getLocalService(PackageManager.class);
+    def pm = Framework.getService(PackageManager.class);
     def addons = pm.listInstalledPackagesNames();
 
     println JsonOutput.toJson([installed: addons]);`;

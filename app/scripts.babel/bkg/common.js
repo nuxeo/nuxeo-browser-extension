@@ -105,7 +105,7 @@ const checkDependencies = `import groovy.json.JsonOutput;
   import org.nuxeo.ecm.admin.runtime.RuntimeInstrospection;
   import org.nuxeo.runtime.api.Framework;
 
-  def pm = Framework.getLocalService(PackageManager.class);
+  def pm = Framework.getService(PackageManager.class);
   def snapshotPkg = StudioSnapshotHelper.getSnapshot(pm.listRemoteAssociatedStudioPackages());
   def nxInstance = PlatformVersionHelper.getPlatformFilter();
 
