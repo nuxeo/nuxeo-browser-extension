@@ -27,17 +27,17 @@ function pageActionOnNuxeo(tabInfo) {
     url: tabUrl,
     name: 'JSESSIONID',
   }, (cookies) => {
-    chrome.pageAction.hide(tabInfo.id);
+    chrome.action.hide(tabInfo.id);
     cookies.forEach((cookie) => {
       if ((cookie.value).match(re) && ((tabUrl).indexOf(login) < 0)) {
-        chrome.pageAction.show(tabInfo.id);
+        chrome.action.show(tabInfo.id);
       }
     });
   });
 }
 
 function disableExt(tabInfo) {
-  chrome.pageAction.hide(tabInfo.id);
+  chrome.action.hide(tabInfo.id);
 }
 
 function getInfoForTab(tabs) {

@@ -17,7 +17,7 @@ limitations under the License.
 let tabUrl;
 
 function disableIcon(tabId) {
-  chrome.browserAction.setIcon({
+  chrome.action.setIcon({
     path: {
       16: '../images/nuxeo-grey-16.png',
       19: '../images/nuxeo-grey-19.png',
@@ -29,7 +29,7 @@ function disableIcon(tabId) {
 }
 
 function enableIcon(tabId) {
-  chrome.browserAction.setIcon({
+  chrome.action.setIcon({
     path: {
       16: '../images/nuxeo-16.png',
       19: '../images/nuxeo-19.png',
@@ -50,7 +50,7 @@ function pageActionOnNuxeo(tabInfo) {
     name: 'JSESSIONID',
   }, (cookies) => {
     disableIcon();
-    chrome.browserAction.disable(tabInfo.id);
+    chrome.action.disable(tabInfo.id);
     cookies.forEach((cookie) => {
       if ((cookie.value).match(re)
         && ((tabUrl).indexOf(login) < 0)
@@ -58,7 +58,7 @@ function pageActionOnNuxeo(tabInfo) {
         && ((tabUrl).indexOf(cookie.domain) > 1)
         && ((tabUrl).indexOf(cookie.path) > 1)) {
         enableIcon();
-        chrome.browserAction.enable(tabInfo.id);
+        chrome.action.enable(tabInfo.id);
       }
     });
   });
@@ -66,7 +66,7 @@ function pageActionOnNuxeo(tabInfo) {
 
 function disableExt(tabInfo) {
   disableIcon();
-  chrome.browserAction.disable(tabInfo.id);
+  chrome.action.disable(tabInfo.id);
 }
 
 function getInfoForTab(tabs) {

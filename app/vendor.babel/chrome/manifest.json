@@ -1,7 +1,7 @@
 {
   "name": "Nuxeo Dev Tools",
   "version": "3.1.0",
-  "manifest_version": 2,
+  "manifest_version": 3,
   "content_security_policy": "script-src 'self' https://ssl.google-analytics.com; object-src 'self'",
   "description": "A handy collection of shortcuts and tools for the Nuxeo developer",
   "icons": {
@@ -10,34 +10,31 @@
   },
   "default_locale": "en",
   "background": {
-    "scripts": [
-      "../../../node_modules/webextension-polyfill/dist/browser-polyfill.min.js",
-      "../../../node_modules/nuxeo/nuxeo.js",
-      "../../../app/libs/purify.min.js",
-      "../../../app/vendor/chrome/chrome-bkg.js",
-      "../../../app/scripts/bkg.js"
-    ],
-    "persistent": true
+    "service_worker": "../../../app/service_worker.js",
+    "type": "module"
   },
   "permissions": [
     "storage",
     "cookies",
     "tabs",
-    "http://*/*",
-    "https://*/*",
     "activeTab",
-    "https://ajax.googleapis.com/",
     "notifications",
     "background",
     "<all_urls>",
     "webRequest",
-    "webRequestBlocking",
+    "webRequestBlocking"
+  ],
+  "host_permissions": [
+    "https://ajax.googleapis.com/",
     "https://app.prodpad.com/"
+  ],
+  "optional_host_permissions": [
+    "*://*/*",
   ],
   "omnibox": {
     "keyword": "nx"
   },
-  "page_action": {
+  "action": {
     "default_icon": {
       "19": "images/nuxeo-19.png",
       "38": "images/nuxeo-38.png"
