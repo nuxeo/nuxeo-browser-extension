@@ -1,0 +1,35 @@
+name: CI Build
+
+on: 
+  pull_request:
+
+  push:
+    branches:
+      - 'master'
+      - 'develop' # gitflow mainly on hosted runner
+
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: git tag reference to build
+        required: true
+        type: string
+    
+  workflow_call:
+    inputs:
+      ref:
+          description: git tag reference to build
+          required: true
+          type: string
+
+jobs:
+  deploy:
+    runs-on:
+      - ${{ github.repository_owner != github.actor && 'ubuntu-latest' || 'self-hosted' }}
+  
+    steps:
+
+      - name: Checkout Commit
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
