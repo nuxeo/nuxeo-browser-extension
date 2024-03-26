@@ -58,10 +58,20 @@ class ContentMessageHandler {
   }
 }
 
-new ServiceWorkerBridge().bootstrap().then((worker) => {
-  const content = new Content(worker.browserStore);
-  const handler = new ContentMessageHandler(content);
+new ServiceWorkerBridge()
+  .bootstrap({
+    name: 'content',
+    entrypoint: () => { console.warn('Loading content script'); }
+  })
+  .then((worker) => {
+    const content = new Content(worker.browserStore);
+    const handler = new ContentMessageHandler(content);
 
-  chrome.runtime.onMessage
-    .addListener((request, sender, sendResponse) => handler.handle(request, sender, sendResponse));
-});
+    chrome.runtime.onMessage
+      .addListener((request, sender, sendResponse) => handler.handle(request, sender, sendResponse));
+
+    chrome.cookies.getAll({ domain: document.location.hostname }, (cookies) => {
+      const allCookies = cookies.map((cookie) => `${cookie.name}=${cookie.value}`).join(';');
+      worker.declarativeNetEngine.setCookieHeader({ domain: document.location.hostname, cookie: allCookies });
+    });
+  });

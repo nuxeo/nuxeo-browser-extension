@@ -23,12 +23,12 @@ class BaseRule {
 }
 
 class CookieHeaderRule extends BaseRule {
-  constructor(rootUrl = 'https://connect.nuxeo.com', cookieHeader) {
+  constructor(domain = 'connect.nuxeo.com', cookieHeader) {
     super();
 
     // Set properties
     this.cookieHeader = cookieHeader;
-    this.rootUrl = rootUrl;
+    this.domain = domain;
 
     // Bind methods
     Object.getOwnPropertyNames(Object.getPrototypeOf(this))
@@ -40,7 +40,7 @@ class CookieHeaderRule extends BaseRule {
 
   // eslint-disable-next-line class-methods-use-this
   key() {
-    return `cookieHeader-${this.rootUrl}`;
+    return `cookieHeader-${this.domain}`;
   }
 
   toJson(priority = 1) {
@@ -48,7 +48,7 @@ class CookieHeaderRule extends BaseRule {
       id: this.hashCode(),
       priority,
       condition: {
-        urls: `${this.rootUrl}/*`,
+        urlFilter: `*://${this.domain}/*`
       },
       action: {
         type: 'modifyHeaders',
@@ -137,9 +137,10 @@ class RedirectRule extends BaseRule {
         type: 'redirect',
         redirect: {
           transform: {
-            scheme: 'https',
+            scheme: this.to.protocol.slice(0, -1), // Use the scheme from the `to` URL
             host: this.to.host,
-            path: this.to.path,
+            port: (this.to.port && this.to.port !== '') ? this.to.port : '443', // Handle the case where the port is an empty string
+            path: this.to.pathname,
           },
         },
       },
@@ -286,6 +287,12 @@ class DeclarativeNetEngine extends ServiceWorkerComponent {
       .catch((error) => {
         console.error('Failed to remove dynamic rules:', error);
       });
+  }
+
+  setCookieHeader({ domain, cookie }) {
+    return this
+      .push(new CookieHeaderRule(domain, cookie))
+      .then(() => this.flush());
   }
 }
 

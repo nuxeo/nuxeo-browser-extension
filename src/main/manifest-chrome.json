@@ -12,7 +12,17 @@
   "background": {
     "service_worker": "main.js"
   },
+  "content_scripts": [
+    {
+      "matches": ["http://localhost:8080/*", "https://nos-preprod-connect.nuxeocloud.com/*", "https://connect.nuxeo.com/*"],
+      "js": ["content/main/index.js"]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
   "permissions": [
+    "cookies",
     "storage",
     "contextMenus",
     "tabs",
