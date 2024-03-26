@@ -1,7 +1,7 @@
 /* eslint-disable comma-dangle */
 
 class ServiceWorkerBridge {
-  bootstrap() {
+  bootstrap({ name, entrypoint }) {
     return new Promise((resolve, reject) => {
       chrome.runtime.sendMessage(
         {
@@ -21,7 +21,27 @@ class ServiceWorkerBridge {
           return resolve(this);
         }
       );
-    });
+    })
+      // eslint-disable-next-line no-return-assign, no-sequences
+      .then((worker) => {
+        worker[name] = entrypoint;
+        return worker.developmentMode
+          .asPromise()
+          .then(() => {
+            // Check if 'window' is defined, otherwise use 'window'
+            // eslint-disable-next-line no-restricted-globals, no-undef
+            const globalScope = typeof self !== 'undefined' ? self : window;
+            // eslint-disable-next-line no-return-assign
+            return globalScope.nuxeoWebExtension = worker;
+          })
+          // eslint-disable-next-line no-sequences
+          .catch(() => (worker));
+      })
+      .then((worker) => (
+        // eslint-disable-next-line no-sequences
+        entrypoint(worker),
+        worker
+      ));
   }
 
   createProxies(components) {

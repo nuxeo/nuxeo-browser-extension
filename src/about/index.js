@@ -19,29 +19,32 @@ import $ from 'jquery';
 import ServiceWorkerBridge from '../service-worker-bridge';
 
 new ServiceWorkerBridge()
-  .bootstrap()
-  .then((worker) => worker.tabActivator)
-  .then((tabActivator) => $(() => {
-    const date = new Date().getFullYear();
-    $('#copyright').append(`${date} Nuxeo`);
-    $('#apache').click(() => {
-      tabActivator.loadNewExtensionTab(
-        'http://www.apache.org/licenses/LICENSE-2.0'
-      );
-    });
-    $('#feedback').click(() => {
-      tabActivator.loadNewExtensionTab(
-        'https://portal.prodpad.com/40c295d6-739d-11e7-9e52-06df22ffaf6f'
-      );
-    });
-    $('#apache').click(() => {
-      tabActivator.loadNewExtensionTab(
-        'http://www.apache.org/licenses/LICENSE-2.0'
-      );
-    });
-    $('#feedback').click(() => {
-      tabActivator.loadNewExtensionTab(
-        'https://portal.prodpad.com/40c295d6-739d-11e7-9e52-06df22ffaf6f'
-      );
-    });
-  }));
+  .bootstrap({
+    name: 'about',
+    entrypoint: (worker) => {
+      const tabActivator = worker.tabActivator;
+      const date = new Date().getFullYear();
+      $('#copyright').append(`${date} Nuxeo`);
+      $('#version').append(chrome.runtime.getManifest().version_name);
+      $('#apache').click(() => {
+        tabActivator.loadNewExtensionTab(
+          'http://www.apache.org/licenses/LICENSE-2.0'
+        );
+      });
+      $('#feedback').click(() => {
+        tabActivator.loadNewExtensionTab(
+          'https://portal.prodpad.com/40c295d6-739d-11e7-9e52-06df22ffaf6f'
+        );
+      });
+      $('#apache').click(() => {
+        tabActivator.loadNewExtensionTab(
+          'http://www.apache.org/licenses/LICENSE-2.0'
+        );
+      });
+      $('#feedback').click(() => {
+        tabActivator.loadNewExtensionTab(
+          'https://portal.prodpad.com/40c295d6-739d-11e7-9e52-06df22ffaf6f'
+        );
+      });
+    }
+  });
