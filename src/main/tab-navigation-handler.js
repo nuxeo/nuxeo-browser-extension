@@ -150,7 +150,7 @@ class TabNavigationHandler extends ServiceWorkerComponent {
               message: 'You are not authenticated. Please log in and try again.',
               iconUrl: '../images/access_denied.png',
             });
-            return this.reloadServerTab({ rootUrl: nuxeoUrl, tabInfo }, 0);
+            return this.reloadServerTab({ rootUrl: nuxeoUrl, tabInfo });
           })
           .then((response) => {
             if (response.ok) return response;

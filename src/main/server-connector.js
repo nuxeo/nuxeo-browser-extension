@@ -106,14 +106,21 @@ class ServerConnector extends ServiceWorkerComponent {
 
   asRuntimeInfo() {
     return Promise.all([
+      this.asConnectLocation(),
       this.asInstalledAddons(),
-      this.asDevelopedStudioProjects()])
-      .then(([installedAddons, developedStudioProjects]) => ({
+      this.asRegisteredStudioProject()
+    ])
+      .then(([connectLocation, installedAddons, registredStudioProject]) => ({
         nuxeo: this.nuxeo,
         serverUrl: this.serverUrl,
+        connectUrl: connectLocation,
         installedAddons,
-        developedStudioProjects,
+        registredStudioProject,
       }));
+  }
+
+  asConnectLocation() {
+    return this.executeScript('connect-location');
   }
 
   asRegisteredStudioProject() {

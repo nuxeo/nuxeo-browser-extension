@@ -144,7 +144,7 @@ class DesignerLivePreview extends ServiceWorkerComponent {
     return this.worker.connectLocator
       .asRegistration()
       .then(({ location, credentials }) => {
-        const url = new URL(`/nuxeo/site/studio/v2/project/${projectName}/workspace/ws.resources`, location);
+        const url = new URL(`studio/v2/project/${projectName}/workspace/ws.resources`, location);
         return { url, credentials };
       })
       .then(({ url: workspaceUrl, credentials }) => fetch(workspaceUrl, {

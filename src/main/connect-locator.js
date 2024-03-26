@@ -22,39 +22,37 @@ class ConnectLocator extends ServiceWorkerComponent {
       const hash = CryptoJS
         .SHA512(location.toString())
         .toString();
-      return `connect-locator.${hash}`;
+      return `connect-locator.credentials.${hash}`;
+    };
+
+    this.nuxeoKeyOf = (location) => {
+      const hash = CryptoJS
+        .SHA512(location.toString())
+        .toString();
+      return `connect-locator.nuxeo.${hash}`;
     };
   }
 
   asRegistration(url) {
-    if (url) {
-      const { location, credentials } = this.extractCredentialsAndCleanUrl(url);
-      return this.worker.browserStore
-        .set({ 'connect-locator.url': location, [this.credentialsKeyOf(location)]: credentials })
-        .then((store) => {
-          this.worker.developmentMode
-            .asConsole()
-            .then((console) => console
-              .log(`ConnectLocator.asRegistration(${url})`, store));
-          return store;
-        })
-        .then(() => this.asRegistration());
-    }
-    return this.worker.browserStore
-      .get({ 'connect-locator.url': 'https://connect.nuxeo.com/' })
-      .then((store) => {
-        const location = new URL(store['connect-locator.url']);
-        location.pathname = location.pathname.replace(/\/?$/, '/');
-        return location;
-      })
-      .then((location) => ({ location, key: this.credentialsKeyOf(location) }))
-      .then(({ location, key }) => this.worker.browserStore.get({ [key]: undefined })
-        .then((credentialsStore) => {
-          if (!(credentialsStore && credentialsStore[key])) {
-            return { location, credentials: null };
-          }
-          return { location, credentials: credentialsStore[key] };
-        }));
+    return this.worker.serverConnector
+      .asRuntimeInfo()
+      .then(({ serverUrl: nuxeoUrl, connectUrl }) => {
+        const nuxeoKey = this.nuxeoKeyOf(new URL(nuxeoUrl));
+        if (url) {
+          const { location, credentials } = this.extractCredentialsAndCleanUrl(url);
+          const credentialsKey = this.credentialsKeyOf(location);
+          return this.worker.browserStore
+            .set({ [nuxeoKey]: location, [credentialsKey]: credentials })
+            .then((store) => (console.warn('connect-locator.asRegistration', store), store))
+            .then(() => this.asRegistration());
+        }
+        return this.worker.browserStore
+          .get({ [nuxeoKey]: connectUrl })
+          .then((store) => new URL(store[nuxeoKey]))
+          .then((location) => ({ location, credentialsKey: this.credentialsKeyOf(location) }))
+          .then(({ location, credentialsKey }) => this.worker.browserStore.get({ [credentialsKey]: undefined })
+            .then((credentialsStore) => ({ location, credentials: credentialsStore[credentialsKey] })));
+      });
   }
 
   // eslint-disable-next-line class-methods-use-this
@@ -66,7 +64,7 @@ class ConnectLocator extends ServiceWorkerComponent {
       location.username = '';
       location.password = '';
     }
-    location.pathname = location.pathname.replace(/\/$/, '').toLowerCase();
+    location.pathname = location.pathname.replace(/\/?$/, '/').toLowerCase();
     return { location: location.toString(), credentials };
   }
 
