@@ -78,10 +78,10 @@ class TabNavigationHandler extends ServiceWorkerComponent {
       })
       .then((undoStack) => {
         // tab update handle
-        const tabUpdatedHandle = (tabId, changeInfo, tab) => {
+        const tabUpdatedHandle = (tabId, changeInfo, tabInfo) => {
           if (changeInfo.status !== 'complete') return;
 
-          this.enableExtensionIfNuxeoServerTab(tab);
+          this.enableExtensionIfNuxeoServerTab(tabInfo);
         };
         chrome.tabs.onUpdated.addListener(tabUpdatedHandle);
         undoStack.push(() => chrome.tabs.onUpdated.removeListener(tabUpdatedHandle));
@@ -118,20 +118,22 @@ class TabNavigationHandler extends ServiceWorkerComponent {
       .then((undoStack) => () => undoStack.forEach((cleanup) => cleanup()));
   }
 
-  enableExtensionIfNuxeoServerTab(info) {
+  enableExtensionIfNuxeoServerTab(tabInfo) {
     return this.worker.developmentMode.asConsole()
       .then((console) => this
-        .asServerUrl(info)
+        .asServerUrl(tabInfo)
         .then((serverUrl) => {
-          console.log('Handling tab activation', info);
-          return this.worker.serverConnector.onNewLocation(serverUrl)
-            .then(() => (serverUrl ? this.enableTabExtension(info) : this.disableTabExtension(info)))
-            .then(() => chrome.action.isEnabled(info.id)
+          console.log('Handling tab activation', tabInfo);
+          return Promise.resolve()
+            .then(() => this.worker.serverConnector.onNewLocation(serverUrl))
+            .then(() => (serverUrl ? this.worker.cookieManager.enable() : this.worker.cookieManager.disable()))
+            .then(() => (serverUrl ? this.enableTabExtension(tabInfo) : this.disableTabExtension(tabInfo)))
+            .then(() => chrome.action.isEnabled(tabInfo.id)
               .then((isEnabled) => console
-                .log(`Handled tab activation <- serverUrl=${serverUrl}, extension=${isEnabled ? 'enabled' : 'disabled'}`, info)))
+                .log(`Handled tab activation <- serverUrl=${serverUrl}, extension=${isEnabled ? 'enabled' : 'disabled'}`, tabInfo)))
             .then(() => serverUrl);
         })
-        .catch((cause) => console.error('Handled tab activation <- caught error', info, cause)));
+        .catch((cause) => console.error('Handled tab activation <- caught error', tabInfo, cause)));
   }
 
   asServerUrl(tabInfo) {

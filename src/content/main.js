@@ -69,9 +69,4 @@ new ServiceWorkerBridge()
 
     chrome.runtime.onMessage
       .addListener((request, sender, sendResponse) => handler.handle(request, sender, sendResponse));
-
-    chrome.cookies.getAll({ domain: document.location.hostname }, (cookies) => {
-      const allCookies = cookies.map((cookie) => `${cookie.name}=${cookie.value}`).join(';');
-      worker.declarativeNetEngine.setCookieHeader({ domain: document.location.hostname, cookie: allCookies });
-    });
   });

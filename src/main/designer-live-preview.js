@@ -22,6 +22,7 @@ import DeclarativeNetComponents from './declarative-net-engine';
 import ServiceWorkerComponent from './service-worker-component';
 
 const BasicAuthenticationHeaderRule = DeclarativeNetComponents.BasicAuthenticationHeaderRule;
+const CookieHeaderRule = DeclarativeNetComponents.CookieHeaderRule;
 const RedirectRule = DeclarativeNetComponents.RedirectRule;
 
 class DesignerLivePreview extends ServiceWorkerComponent {
@@ -45,6 +46,11 @@ class DesignerLivePreview extends ServiceWorkerComponent {
       return Promise.resolve();
     }
     return this.worker.declarativeNetEngine.push(new BasicAuthenticationHeaderRule(url, credentials));
+  }
+
+  pushCookieHeaderOf(url) {
+    const { domain, cookieHeader } = this.worker.cookieManager.cookieHeaderOf(url);
+    return this.worker.declarativeNetEngine.push(new CookieHeaderRule(domain, cookieHeader));
   }
 
   pushRedirectionsOf(json, credentials = undefined, rootUrl = this.worker.serverConnector.serverUrl) {
@@ -176,14 +182,15 @@ class DesignerLivePreview extends ServiceWorkerComponent {
         if (!contentType || !contentType.includes('application/json')) {
           throw errorOf('Unexpected content type');
         }
-        return response.json().then((json) => ({ json, credentials }));
+        return response.json().then((json) => ({ workspaceUrl, json, credentials }));
       });
   }
 
   enable(projectName) {
     return this.asWorkspace(projectName)
-      .then(({ credentials, json }) =>
+      .then(({ workspaceUrl, credentials, json }) =>
         this.disable()
+          .then(() => this.pushCookieHeaderOf(workspaceUrl))
           .then(() => this.pushRedirectionsOf(json, credentials))
           .then(() => this.worker.declarativeNetEngine.flush())
           .then((undo) => this.undoByProjectNames.set(projectName, undo))

@@ -3,6 +3,7 @@
 import TabNavigationHandler from './tab-navigation-handler';
 import BrowserStore from './browser-store';
 import ConnectLocator from './connect-locator';
+import CookieManager from './cookie-manager';
 import DeclararactiveNetCompoments from './declarative-net-engine';
 import DesignerLivePreview from './designer-live-preview';
 import DesktopNotifier from './desktop-notifier';
@@ -99,6 +100,7 @@ class ServiceWorker extends ServiceWorkerComponent {
     this.buildInfo = new RuntimeBuildComponent
       .RuntimeBuildInfo(this, buildTime, buildVersion, browserVendor);
     this.browserStore = new BrowserStore(this);
+    this.cookieManager = new CookieManager(this);
     this.componentInventory = new ServiceWorkerComponentInventory(this);
     this.connectLocator = new ConnectLocator(this);
     this.declarativeNetEngine = new DeclarativeNetEngine(this);
