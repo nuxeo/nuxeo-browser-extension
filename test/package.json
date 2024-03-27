@@ -1,0 +1,51 @@
+{
+  "dependencies": {
+    "chai": "^5.1.0",
+    "nuxeo": "^4.0.3",
+    "webextension-polyfill": "^0.10.0"
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "9.5.1",
+    "@wdio/cli": "^8.33.1",
+    "@wdio/config": "^8.33.1",
+    "@wdio/cucumber-framework": "^8.33.1",
+    "@wdio/globals": "^8.33.1",
+    "@wdio/local-runner": "^8.33.1",
+    "@wdio/spec-reporter": "^8.32.4",
+    "@wdio/static-server-service": "^8.32.4",
+    "cucumber:9.5.1": "link:@cucumber/cucumber:9.5.1",
+    "request-promise": "^4.2.6",
+    "wdio-cucumberjs-json-reporter": "^5.2.1",
+    "webdriverio": "^8.33.1"
+  },
+  "engines": {
+    "node": ">=20.0"
+  },
+  "eslintConfig": {
+    "env": {
+      "browser": true,
+      "node": true
+    },
+    "globals": {
+      "chrome": true
+    },
+    "rules": {
+      "eol-last": 0,
+      "no-return-assign": [
+        2,
+        "except-parens"
+      ],
+      "quotes": [
+        2,
+        "single"
+      ]
+    }
+  },
+  "name": "nuxeo-extension-tests",
+  "private": true,
+  "scripts": {
+    "test": "./node_modules/.bin/wdio wdio.conf.mjs",
+    "test:display": "./node_modules/.bin/wdio wdio.conf.mjs --spec features/display.feature"
+  },
+  "type": "module"
+}

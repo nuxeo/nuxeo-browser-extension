@@ -1,13 +1,12 @@
 node_modules
 temp
 .tmp
+build
 dist
 .sass-cache
 .npmrc
 bower_components
 package
-app/scripts
-app/vendor
 npm-debug.log
 target
 test*/screenshots/*.png
@@ -18,3 +17,7 @@ ftest/src/test/resources/instance.clid
 ftest/.settings/
 selenium-standalone.txt
 .local
+.nix/.devenv
+.env.chrome
+.env.firefox
+.env.local

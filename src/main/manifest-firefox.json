@@ -1,0 +1,37 @@
+{
+  "name": "Nuxeo Dev Tools",
+  "version": "3.1.0",
+  "manifest_version": 3,
+  "description": "A handy collection of shortcuts and tools for the Nuxeo developer",
+  "icons": {
+    "16": "images/nuxeo-16.png",
+    "128": "images/nuxeo-128.png"
+  },
+  "default_locale": "en",
+  "background": {
+    "service_worker": "main.js"
+  },
+  "permissions": [
+    "storage",
+    "cookies",
+    "tabs",
+    "activeTab",
+    "notifications",
+    "background",
+    "webRequest"
+  ],
+  "host_permissions": [
+    "http://localhost:8080/*"
+  ],
+  "omnibox": {
+    "keyword": "nx"
+  },
+  "action": {
+    "default_icon": {
+      "19": "images/nuxeo-19.png",
+      "38": "images/nuxeo-38.png"
+    },
+    "default_title": "Nuxeo Dev Tools",
+    "default_popup": "popup/index.html"
+  }
+}

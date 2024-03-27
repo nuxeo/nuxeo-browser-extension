@@ -1,0 +1,7 @@
+{
+  "name": "mypackage",
+  "version": "1.0.0",
+  "dependencies": {
+    "pnpm": "8.15.4"
+  }
+}
