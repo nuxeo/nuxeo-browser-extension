@@ -357,7 +357,7 @@ function loadPage(worker) {
       regexes.ui.home = new RegExp('(?:home$)');
       regexes.ui.browse = new RegExp('(?:browse(?<path>/.+?(?=\\?|$)))');
       regexes.ui.docid = new RegExp(
-        `(?:doc[\/A-Za-z_\.0-9]+(?<docid>${regexes.uuid.source}))`
+        `(?:doc/(?<docid>${regexes.uuid.source}))`
       );
       regexes.ui.doc = new RegExp(
         `/(?:repo/(?<repo>${regexes.repo.source})|)ui/#!/(?:${regexes.ui.browse.source}|${regexes.ui.docid.source}|${regexes.ui.home.source})`
