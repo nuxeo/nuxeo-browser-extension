@@ -163,10 +163,10 @@ function loadPage(worker) {
   };
 
   const noStudioPackageFound = () => {
-    $('#no-studio-buttons').css('display', 'block');
-    $('div.nuxeoctl-command').append('nuxeoctl register');
-    $('div.shade').show();
-    $('#no-studio-package-registered').show();
+    $('#no-studio-buttons').hide();
+    // $('div.nuxeoctl-command').append('nuxeoctl register');
+    // $('div.shade').show();
+    // $('#no-studio-package-registered').show();
     worker.desktopNotifier.notify(
       'no_studio_project',
       {
@@ -412,7 +412,7 @@ function loadPage(worker) {
         .then((selectBox) => {
           if (!selectBox) {
             return worker.serverConnector
-              .asRegisteredStudioProject()
+              .asConnectRegistration()
               .then((registration) => {
                 const { package: studioPackage } = registration;
                 if (!studioPackage) return registration;
@@ -452,14 +452,35 @@ function loadPage(worker) {
             });
         })
         // eslint-disable-next-line no-shadow
-        .then(({ serverUrl, developmentMode, package: registeredPackage }) => {
+        .then((registration) => {
+          const {
+            // eslint-disable-next-line no-shadow
+            serverUrl: serverLocation,
+            connectUrl: connectLocation,
+            connectSubscription,
+            developmentMode, 
+            package: registeredPackage
+          } = registration;
           if (!developmentMode) {
             $('div.shade').show();
             $('#development-mode-disabled').show();
-            $('#development-mode-disabled #serverUrl').text(serverUrl);
+            $('#development-mode-disabled #serverUrl').text(serverLocation);
+          }
+          if (connectSubscription.errorMessage) {
+            const error = JSON.parse(connectSubscription.errorMessage);
+            const alertText = `
+    Cannot retrieve your server connect registration from \`${connectUrl}\`...
+    ${JSON.stringify(error, null, 2)}
+  `.replace(/\n/g, '<br>');
+
+            Swal.fire({
+              title: 'Warning',
+              html: alertText,
+              icon: 'warning',
+            });
           }
           if (registeredPackage) {
-            studioPackageFound(connectUrl, registeredPackage);
+            studioPackageFound(new URL(connectLocation), registeredPackage);
           } else {
             noStudioPackageFound();
           }
@@ -473,54 +494,35 @@ function loadPage(worker) {
           $('#traces-button').toggleClass('enabled', isEnabled);
         }));
 
-      pendingPromises.push(worker.serverConnector
+      pendingPromises.push(worker
+        .serverConnector
         .asRuntimeInfo()
-        .then((info) => {
-          $('#platform-version').text(` ${info.nuxeo.serverVersion.version}`);
-          return info;
-        })
         .then((info) => {
           const nuxeoServerVersion = NuxeoServerVersion.create(info.nuxeo.serverVersion.version);
           const lts2019 = NuxeoServerVersion.create('10.10');
-          if (nuxeoServerVersion.lt(lts2019)) {
-            worker.browserStore
-              .set({ highlight: true })
-              .then(() => adjustStorageButtons());
-          }
-          return info;
-        })
-        .then((info) => {
           serverUrl = info.serverUrl.replace(/\/$/, '');
-          return serverUrl;
-        })
-        // eslint-disable-next-line no-shadow
-        .then((serverUrl) => {
           const serverString = DOMPurify.sanitize(serverUrl);
-          $('div.server-name-url').text(serverString);
-          return serverUrl;
-        })
-        // eslint-disable-next-line no-shadow
-        .then((serverUrl) => {
-          registerLink(
-            '#automation-doc',
-            serverUrl.concat('/site/automation/doc/')
-          );
-          return serverUrl;
-        })
-      // eslint-disable-next-line no-shadow
-        .then((serverUrl) => {
-          worker.serverConnector
-            .asInstalledAddons()
-            .then((addons) => {
-              if (!addons.includes('nuxeo-web-ui')) {
-                $('#designer-livepreview').hide();
-              }
-              const playgroundUrl = addons.includes('nuxeo-api-playground')
-                ? `${serverUrl}/playground/#/${serverUrl}`
-                : `http://nuxeo.github.io/api-playground/#/${serverUrl}`;
-              return registerLink('#api-playground', playgroundUrl);
-            });
-          return serverUrl;
+
+          const promises = [
+            Promise.resolve($('#platform-version').text(` ${info.nuxeo.serverVersion.version}`)),
+            nuxeoServerVersion.lt(lts2019)
+              ? worker.browserStore.set({ highlight: true }).then(() => adjustStorageButtons())
+              : Promise.resolve(),
+            Promise.resolve($('div.server-name-url').text(serverString)),
+            Promise.resolve(registerLink('#automation-doc', serverUrl.concat('/site/automation/doc/'))),
+            Promise.resolve(info.installedAddons)
+              .then((addons) => {
+                if (!addons.includes('nuxeo-web-ui')) {
+                  $('#designer-livepreview').hide();
+                }
+                const playgroundUrl = addons.includes('nuxeo-api-playground')
+                  ? `${serverUrl}/playground/#/${serverUrl}`
+                  : `http://nuxeo.github.io/api-playground/#/${serverUrl}`;
+                return registerLink('#api-playground', playgroundUrl);
+              })
+          ];
+
+          return Promise.all(promises);
         }));
 
       pendingPromises.push(worker.tabNavigationHandler

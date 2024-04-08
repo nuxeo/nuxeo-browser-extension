@@ -111,8 +111,8 @@ class StudioHotReloader extends ServiceWorkerComponent {
   handleLegacyErrors(error) {
     return this.worker.serverConnector
       .asRuntimeInfo()
-      .then(({ nuxeo, registeredStudioProject }) => {
-        if (!registeredStudioProject) {
+      .then(({ nuxeo, connectRegistration }) => {
+        if (!connectRegistration) {
           const notification = {
             id: 'studio-not-registered',
             options: {
@@ -123,14 +123,14 @@ class StudioHotReloader extends ServiceWorkerComponent {
           };
           return this.worker.serverConnector.handleErrors(error, notification);
         }
-        const { package: registeredStudioPackage } = registeredStudioProject || { package: 'unknown' };
+        const { package: registeredStudioPackage } = connectRegistration || { package: 'unknown' };
         const nuxeoServerVersion = NuxeoServerVersion.create(nuxeo.version);
         const nuxeoLegacyVersion = NuxeoServerVersion.create('9.2');
         if (!nuxeoServerVersion.lte(nuxeoLegacyVersion)) throw error;
         // Error handling for Nuxeo 9.2 and older
 
         let dependencyErrorNotification = null;
-        if (registeredStudioProject.nx !== registeredStudioPackage.studioDistrib[0]) {
+        if (connectRegistration.nx !== registeredStudioPackage.studioDistrib[0]) {
           const message = `${registeredStudioPackage.name} - ${registeredStudioPackage.studioDistrib[0]} cannot be installed on Nuxeo ${nuxeo.version}.`;
           dependencyErrorNotification = {
             id: 'dependencies-ismatch',
@@ -142,7 +142,7 @@ class StudioHotReloader extends ServiceWorkerComponent {
             }
           };
         }
-        if (!registeredStudioProject.match && registeredStudioPackage.deps.length > 0) {
+        if (!connectRegistration.match && registeredStudioPackage.deps.length > 0) {
           const deps = registeredStudioPackage.deps;
           const items = [];
           deps.forEach((dep) => {

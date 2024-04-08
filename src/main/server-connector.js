@@ -106,22 +106,21 @@ class ServerConnector extends ServiceWorkerComponent {
         throw cause;
       });
   }
+
   isConnected() {
     return Promise.resolve(this.disconnect != null);
   }
 
   asRuntimeInfo() {
     return Promise.all([
-      this.asConnectLocation(),
       this.asInstalledAddons(),
-      this.asRegisteredStudioProject()
+      this.asConnectRegistration(),
     ])
-      .then(([connectLocation, installedAddons, registredStudioProject]) => ({
+      .then(([installedAddons, connectRegistration]) => ({
         nuxeo: this.nuxeo,
         serverUrl: this.serverUrl,
-        connectUrl: connectLocation,
         installedAddons,
-        registredStudioProject,
+        connectRegistration,
       }));
   }
 
@@ -129,9 +128,9 @@ class ServerConnector extends ServiceWorkerComponent {
     return this.executeScript('connect-location');
   }
 
-  asRegisteredStudioProject() {
+  asConnectRegistration() {
     return this
-      .executeScript('registered-studio-project')
+      .executeScript('connect-registration')
       .then((result) => ({ ...result, serverUrl: this.serverUrl }));
   }
 
