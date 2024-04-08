@@ -1,5 +1,5 @@
 {
-  "version": "4.0.0",
+  "version": "4.0.0-HF01",
   "dependencies": {
     "bootstrap": "^5.3.3",
     "crypto-js": "^4.2.0",
