@@ -124,6 +124,19 @@ class BrowserStore extends ServiceWorkerComponent {
     });
   }
 
+  // eslint-disable-next-line class-methods-use-this
+  clear() {
+    return new Promise((resolve, reject) => {
+      chrome.storage.local.clear(() => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
   list() {
     return new Promise((resolve, reject) => {
       chrome.storage.local.get(null, (items) => {

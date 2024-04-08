@@ -89,6 +89,20 @@ class ServiceWorkerComponentInventory extends ServiceWorkerComponent {
     const componentNames = this.componentNamesOf(this.worker, recursive);
     return Promise.resolve(componentNames);
   }
+
+  reset() {
+    return this
+      .worker
+      .browserStore
+      .clear()
+      .then(() => chrome.runtime.reload());
+  }
+
+  reload() {
+    return this
+      .asPromise()
+      .then(() => chrome.runtime.reload());
+  }
 }
 
 class ServiceWorker extends ServiceWorkerComponent {

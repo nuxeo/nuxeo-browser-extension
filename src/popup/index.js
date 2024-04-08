@@ -278,7 +278,7 @@ function loadPage(worker) {
               ? worker.connectLocator.asRegistration(value)
               : worker.connectLocator.asRegistration();
             return registration
-              .then(({ location }) => (field.val(location), location));
+              .then(({ location }) => (field.val(location), new URL(location)));
           }));
 
         // studio package name
@@ -300,12 +300,7 @@ function loadPage(worker) {
 
         Promise
           .all(savingPromises)
-        // eslint-disable-next-line no-unused-vars, no-shadow
-          .then(([{ connectUrl }, packageName, highlight]) => {
-            studioPackageFound(connectUrl, packageName);
-            checkDependencyMismatch();
-          })
-          .then(() => worker.tabNavigationHandler.reloadServerTab());
+          .then(() => worker.componentInventory.reload());
       });
 
       $('#reset').click(() => {
@@ -317,18 +312,7 @@ function loadPage(worker) {
           cancelButtonText: 'Cancel',
         }).then((result) => {
           if (!result.isConfirmed) return;
-          Promise.all([
-            worker.connectLocator
-              .asRegistration('https://connect.nuxeo.com'),
-            worker.jsonHighlighter
-              .withHighlight(true)
-          ])
-            .then(() => {
-              $('#connect-url-input').val('');
-              $('#connect-url').hide();
-              $('#studio-package-name-input').hide();
-              $('#highlight-input').prop('checked', true);
-            });
+          worker.componentInventory.reset();
         });
       });
 
