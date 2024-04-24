@@ -453,9 +453,9 @@ function loadPage(worker) {
           if (connectSubscription.errorMessage) {
             const error = JSON.parse(connectSubscription.errorMessage);
             const alertText = `
-    Cannot retrieve your server connect registration from \`${connectUrl}\`...
-    ${JSON.stringify(error, null, 2)}
-  `.replace(/\n/g, '<br>');
+    Cannot retrieve your server registration from \`${connectUrl}\`...
+    <br/>Most probably your CLID is invalid or missing !
+    <br/>(see console logs for mor details)`;
 
             Swal.fire({
               title: 'Warning',
