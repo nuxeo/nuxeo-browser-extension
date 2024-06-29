@@ -1,5 +1,4 @@
 name: CI Build
-
 on: 
   pull_request:
 
@@ -17,26 +16,38 @@ on:
 
 jobs:
   build:
+    permissions:
+      contents: write # This is needed for release
+      actions: write # This is needed for upload-artifact
+
     runs-on:
       - ${{ github.repository_owner != github.actor && 'ubuntu-latest' || 'self-hosted' }}
-  
+
     steps:
 
       - name: Checkout Commit
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version-file: '.nvmrc'
-      
-      - name: Install pnpm
+          node-version-file: '.nvmrc' 
+
+      - name: Setup pnpm
         run: |
-          corepack enable
-          corepack prepare pnpm@next-8 --activate
-      
+          npm install -g pnpm
+  
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store/v3
+          key: |
+            ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
       - name: Install dependencies
         run: pnpm install
       
