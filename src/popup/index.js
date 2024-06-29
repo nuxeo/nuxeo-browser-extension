@@ -370,6 +370,7 @@ function loadPage(worker) {
       function hideActionsAndToggles() {
         $('.buttons').css('display', 'none');
         $('.toggles').css('display', 'none');
+        $('.search').css('display', 'none');
       }
 
       pendingPromises.push(
@@ -386,8 +387,7 @@ function loadPage(worker) {
           hideActionsAndToggles();
         })
         .catch((error) => {
-          worker.developmentMode.asConsole()
-            .then((console) => console.warn('Not connected, cannot check user role', error));
+          console.warn('Not connected, cannot check user role', error);
           hideActionsAndToggles();
         }));
 
@@ -450,7 +450,7 @@ function loadPage(worker) {
             $('#development-mode-disabled').show();
             $('#development-mode-disabled #serverUrl').text(serverLocation);
           }
-          if (connectSubscription.errorMessage) {
+          if (connectSubscription && connectSubscription.errorMessage) {
             const alertText = `
     Cannot retrieve your server registration from \`${connectUrl}\`...
     <br/>Most probably your CLID is invalid or missing !
@@ -481,6 +481,9 @@ function loadPage(worker) {
         .serverConnector
         .asRuntimeInfo()
         .then((info) => {
+          if (!info.nuxeo.connected) {
+            return Promise.resolve();
+          }
           const nuxeoServerVersion = NuxeoServerVersion.create(info.nuxeo.serverVersion.version);
           const lts2019 = NuxeoServerVersion.create('10.10');
           serverUrl = info.serverUrl.replace(/\/$/, '');

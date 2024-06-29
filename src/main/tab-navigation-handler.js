@@ -134,11 +134,12 @@ class TabNavigationHandler extends ServiceWorkerComponent {
             .then(() => serverUrl);
         })
         .catch((cause) => {
-          if (cause.isForbidden) {
-            return;
+          if (!cause.isForbidden) {
+            console.error('Handled tab activation <- caught error', tabInfo, cause);
           }
-          console.error('Handled tab activation <- caught error', tabInfo, cause);
-        }));
+          return Promise.reject(cause);
+        })
+        .finally(() => console.log('Handled tab activation <- done', tabInfo)));
   }
 
   asServerUrl(tabInfo) {
@@ -180,30 +181,34 @@ class TabNavigationHandler extends ServiceWorkerComponent {
   reloadServerTab(context = {
     rootUrl: this.worker.serverConnector.serverUrl,
     tabInfo: this.tabInfo
-  }, maxAttempts = 1, waitingTime = 4000) {
+  }, maxAttempts = 1, waitingTime = 4000, hasReloaded = false) {
     return Promise.resolve(context)
       .then(({ rootUrl, tabInfo }) => {
         if (!tabInfo) {
           throw new Error('No nuxeo server tab info selected');
         }
         return { rootUrl, tabInfo };
-      }).then(({ rootUrl, tabInfo }) => {
-        const runnningstatusUrl = `${rootUrl}/runningstatus`;
+      }).then(({ rootUrl }) => {
+        const runningStatusUrl = `${rootUrl}/runningstatus`;
         let attempts = 0;
         const checkStatus = () => {
           attempts += 1;
           if (attempts > maxAttempts) {
             throw new Error(`Maximum number of attempts reached on ${rootUrl}...`);
           }
-          return fetch(runnningstatusUrl)
+          return fetch(runningStatusUrl)
             .then((response) => {
               if (!response.ok) {
-                // If the status page is not available, check again after a delay
+              // If the status page is not available, check again after a delay
                 return new Promise((resolve) => setTimeout(resolve, waitingTime))
                   .then(checkStatus);
               }
-              chrome.tabs.reload(tabInfo.id);
-              return tabInfo;
+              // Reload the tab only if it has not been reloaded yet
+              if (!hasReloaded) {
+              // chrome.tabs.reload(tabInfo.id);
+                hasReloaded = true; // Update the flag to prevent further reloads
+              }
+              return response;
             })
             .catch(() => new Promise((resolve) => setTimeout(resolve, waitingTime))
               .then(checkStatus));
