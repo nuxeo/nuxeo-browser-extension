@@ -1,5 +1,4 @@
 name: CI Build
-
 on: 
   pull_request:
 
@@ -17,26 +16,69 @@ on:
 
 jobs:
   build:
+    permissions:
+      contents: write # This is needed for release
+      actions: write # This is needed for upload-artifact
+
     runs-on:
       - ${{ github.repository_owner != github.actor && 'ubuntu-latest' || 'self-hosted' }}
-  
+
     steps:
 
       - name: Checkout Commit
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
-      - name: Setup Node
+
+      - name: Cache nvm
+        uses: actions/cache@v4
+        with:
+          path: ~/.nvm
+          key: ${{ runner.os }}-nvm-${{ hashFiles('.nvmrc') }}
+
+      - name: Setup Node (github hosted runner)
+        if: ${{ !contains(runner.labels, 'self-hosted') }}
         uses: actions/setup-node@v4
         with:
-          node-version-file: '.nvmrc'
-      
-      - name: Install pnpm
+          node-version-file: '.nvmrc' 
+
+      - name: Setup Node.js with nvm (self-hosted runner)
+        if: ${{ contains(runner.labels, 'self-hosted') }}
         run: |
+          # Load NVM
+          [ -s "$HOME/.nvm/nvm.sh" ] || curl -s -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
+          source "$HOME/.nvm/nvm.sh"  # This loads nvm
+
+          # Install nodejs 
+          nvm install
+          nvm use
+
+          # Add Node.js and corepack to PATH for subsequent steps
+          echo "$NVM_DIR/versions/node/$(nvm current)/bin" >> $GITHUB_PATH
+
+      - name: Setup pnpm
+        run: |
+          # Enable corepack
           corepack enable
+
+          # Install pnpm
           corepack prepare pnpm@next-8 --activate
-      
+  
+      - name: Verify installations
+        run: |
+          node --version
+          pnpm --version
+          corepack --version
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: |
+            ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
       - name: Install dependencies
         run: pnpm install
       
