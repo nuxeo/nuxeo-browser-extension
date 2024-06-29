@@ -24,6 +24,7 @@
     "tabs"
   ],
   "host_permissions": [
+    "http://*.internal:*/*",
     "http://localhost:8080/*",
     "https://nos-preprod-connect.nuxeocloud.com/*",
     "https://connect.nuxeo.com/*"
