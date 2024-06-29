@@ -319,6 +319,7 @@ function loadPage(worker) {
       // being resolved in promise for handles, better be bound in a dedicated class I think
       let onUI;
       let repository = 'default';
+      let serverRuntimeInfo;
       let serverUrl;
 
       const regexes = {};
@@ -442,14 +443,9 @@ function loadPage(worker) {
             serverUrl: serverLocation,
             connectUrl: connectLocation,
             connectSubscription,
-            developmentMode, 
+            developmentMode,
             package: registeredPackage
           } = registration;
-          if (!developmentMode) {
-            $('div.shade').show();
-            $('#development-mode-disabled').show();
-            $('#development-mode-disabled #serverUrl').text(serverLocation);
-          }
           if (connectSubscription && connectSubscription.errorMessage) {
             const alertText = `
     Cannot retrieve your server registration from \`${connectUrl}\`...
@@ -480,23 +476,24 @@ function loadPage(worker) {
       pendingPromises.push(worker
         .serverConnector
         .asRuntimeInfo()
-        .then((info) => {
-          if (!info.nuxeo.connected) {
+        .then((runtimeInfo) => {
+          if (!runtimeInfo.nuxeo.connected) {
             return Promise.resolve();
           }
-          const nuxeoServerVersion = NuxeoServerVersion.create(info.nuxeo.serverVersion.version);
+          const nuxeoServerVersion = NuxeoServerVersion.create(runtimeInfo.nuxeo.serverVersion.version);
           const lts2019 = NuxeoServerVersion.create('10.10');
-          serverUrl = info.serverUrl.replace(/\/$/, '');
+          serverRuntimeInfo = runtimeInfo;
+          serverUrl = runtimeInfo.serverUrl.replace(/\/$/, '');
           const serverString = DOMPurify.sanitize(serverUrl);
 
           const promises = [
-            Promise.resolve($('#platform-version').text(` ${info.nuxeo.serverVersion.version}`)),
+            Promise.resolve($('#platform-version').text(` ${runtimeInfo.nuxeo.serverVersion.version}`)),
             nuxeoServerVersion.lt(lts2019)
               ? worker.browserStore.set({ highlight: true }).then(() => adjustStorageButtons())
               : Promise.resolve(),
             Promise.resolve($('div.server-name-url').text(serverString)),
             Promise.resolve(registerLink('#automation-doc', serverUrl.concat('/site/automation/doc/'))),
-            Promise.resolve(info.installedAddons)
+            Promise.resolve(runtimeInfo.installedAddons)
               .then((addons) => {
                 if (!addons.includes('nuxeo-web-ui')) {
                   $('#designer-livepreview').hide();
@@ -692,9 +689,18 @@ function loadPage(worker) {
       };
 
       $('#restart-button').on('click', () => {
+        if (!serverRuntimeInfo.nuxeo.user.isAdministrator) {
+          Swal.fire({
+            title: 'Warning',
+            text: 'You do not have administrator privileges.',
+            icon: 'warning',
+            confirmButtonText: 'OK',
+          });
+          return;
+        }
         Swal.fire({
           title: 'Warning!',
-          text: 'Are you sure you want to restart the server?',
+          text: 'You have administrator privileges, but are you sure you want to restart the server?',
           showCancelButton: true,
           confirmButtonText: 'Restart',
           cancelButtonText: 'Cancel',
@@ -730,13 +736,31 @@ function loadPage(worker) {
 
       // Handle click event for the 'reindex' button
       $('#reindex').click(() => {
-        if ($('#reindex-repo').hasClass('active')) {
-          worker.repositoryIndexer.reindex();
+        const reindex = () => {
+          if ($('#reindex-repo').hasClass('active')) {
+            worker.repositoryIndexer.reindex();
+          } else {
+            $('#reindex-form').show();
+            const input = $('#reindex-input').val();
+            $('#reindex-input').val('');
+            worker.repositoryIndexer.reindex(input);
+          }
+        };
+        if (serverRuntimeInfo.connectRegistration.developmentMode) {
+          reindex();
         } else {
-          $('#reindex-form').show();
-          const input = $('#reindex-input').val();
-          $('#reindex-input').val('');
-          worker.repositoryIndexer.reindex(input);
+          Swal.fire({
+            title: 'Warning!',
+            text: 'You are not in development development mode, are you sure you want to re-index the server?',
+            showCancelButton: true,
+            confirmButtonText: 'Re-index',
+            cancelButtonText: 'Cancel',
+          }).then((result) => {
+            if (!result.isConfirmed) {
+              return;
+            }
+            reindex();
+          });
         }
       });
 
