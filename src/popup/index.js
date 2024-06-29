@@ -445,11 +445,6 @@ function loadPage(worker) {
             developmentMode, 
             package: registeredPackage
           } = registration;
-          if (!developmentMode) {
-            $('div.shade').show();
-            $('#development-mode-disabled').show();
-            $('#development-mode-disabled #serverUrl').text(serverLocation);
-          }
           if (connectSubscription.errorMessage) {
             const alertText = `
     Cannot retrieve your server registration from \`${connectUrl}\`...
