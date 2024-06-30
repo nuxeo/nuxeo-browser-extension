@@ -323,7 +323,7 @@ function loadPage(worker) {
       let serverUrl;
 
       const regexes = {};
-      regexes.uuid = /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/;
+      regexes.uuid = /(?:(?<uuid>[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})|uuid:(?<uuidAny>.*))/;
       regexes.repo = /[A-Za-z_\.0-9-]+/;
       regexes.path = /\/[A-Za-z\.0-9_\- \/%~:?#'"]+/;
 
@@ -517,10 +517,10 @@ function loadPage(worker) {
           function exportCurrentLink(docPathOrId) {
             $('#export-current').css('display', 'block');
             $('#export-current').click(() => {
-              if (regexes.uuid.test(docPathOrId)) {
-                getJsonFromGuid(docPathOrId);
-              } else if (docPathOrId.startsWith('/')) {
+              if (docPathOrId.startsWith('/')) {
                 getJsonFromPath(docPathOrId);
+              } else {
+                getJsonFromGuid(docPathOrId);
               }
             });
           }
@@ -808,12 +808,14 @@ function loadPage(worker) {
             $('#search').css('text-indent', '5px');
             $('body').css('overflow-y', 'hidden');
             $('html').css('height', 'auto');
-          } else if (regexes.uuid.test(input)) {
-            getJsonFromGuid(input);
-            $('#loading-gif').css('display', 'none');
-            $('#search').css('text-indent', '5px');
           } else if (pathPattern.test(input)) {
             getJsonFromPath(input);
+            $('#loading-gif').css('display', 'none');
+            $('#search').css('text-indent', '5px');
+          } else if (regexes.uuid.test(input)) {
+            const match = regexes.uuid.exec(input);
+            const uuid = match.groups.uuid || match.groups.uuidAny;
+            getJsonFromGuid(uuid);
             $('#loading-gif').css('display', 'none');
             $('#search').css('text-indent', '5px');
           } else if (
