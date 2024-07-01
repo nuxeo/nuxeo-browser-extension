@@ -66,16 +66,14 @@
     "build:chrome:main": "BUILD_ENTRY=main vite build --mode=chrome",
     "build:chrome:options": "BUILD_ENTRY=options vite build --mode=chrome",
     "build:chrome:popup": "BUILD_ENTRY=popup vite build --mode=chrome",
-    "build:chrome": "NODE_ENV=development pnpm run env:build chrome && NODE_ENV=development concurrently --kill-others-on-fail 'npm:build:chrome:*'",
+    "build:chrome": "pnpm run env:build chrome && concurrently --kill-others-on-fail 'npm:build:chrome:*'",
     "build:firefox:about": "BUILD_ENTRY=about vite build --mode=firefox",
     "build:firefox:content": "BUILD_ENTRY=content vite build --mode=firefox",
     "build:firefox:json": "BUILD_ENTRY=json vite build --mode=firefox",
     "build:firefox:main": "BUILD_ENTRY=main vite build --mode=firefox",
     "build:firefox:options": "BUILD_ENTRY=options vite build --mode=firefox",
     "build:firefox:popup": "BUILD_ENTRY=popup vite build --mode=firefox",
-    "build:firefox": "NODE_ENV=development pnpm run env:build  firefox && NODE_ENV=development concurrently --kill-others-on-fail 'npm:build:firefox:*'",
-    "release:chrome": "pnpm run build:chrome:env && NODE_ENV=production concurrently --kill-others-on-fail 'npm:build:chrome:*'",
-    "release:firefox": "pnpm run build:firefox:env && NODE_ENV=production concurrently --kill-others-on-fail 'npm:build:firefox:*'"
+    "build:firefox": "npm run env:build  firefox && concurrently --kill-others-on-fail 'npm:build:firefox:*'"
   },
   "type": "module"
 }
