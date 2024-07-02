@@ -272,7 +272,6 @@ function loadPage(worker) {
 
       // For chrome browser, the designer live preview is enable
       // for version upper 72
-      $('#designer-livepreview-need-update').hide();
       if (browserVendor === 'Chrome') {
         const version = parseInt(
           /(Firefox|Chrome)\/(?<version>[0-9\.]*)/g
@@ -963,10 +962,6 @@ function loadPage(worker) {
       });
       return Promise
         .all(pendingPromises)
-        .then(() => {
-          $('.popup-loading-message').hide();
-          $('.content').show();
-        })
         .then(() => worker)
         .catch((error) => console.error(error));
     })
