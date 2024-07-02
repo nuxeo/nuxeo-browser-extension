@@ -1,10 +1,29 @@
 {
   "nodes": {
+    "corepack": {
+      "inputs": {
+        "flake-utils": "flake-utils",
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "lastModified": 1667721335,
+        "narHash": "sha256-qx1f3IOSntgHHJ0W/YR1pxSokQKPDN16kud9Am782l0=",
+        "owner": "SnO2WMaN",
+        "repo": "corepack-flake",
+        "rev": "27e48017612380c0e7c2834f8e6924aadca88f6c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "SnO2WMaN",
+        "repo": "corepack-flake",
+        "type": "github"
+      }
+    },
     "devenv": {
       "inputs": {
         "flake-compat": "flake-compat",
         "nix": "nix",
-        "nixpkgs": "nixpkgs",
+        "nixpkgs": "nixpkgs_2",
         "pre-commit-hooks": "pre-commit-hooks"
       },
       "locked": {
@@ -55,6 +74,21 @@
       }
     },
     "flake-utils": {
+      "locked": {
+        "lastModified": 1667395993,
+        "narHash": "sha256-nuEHfE/LcWyuSWnS8t12N1wc105Qtau+/OdUAjtQ0rA=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "5aed5285a952e0b949eb3ba02c12fa4fcfef535f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "flake-utils_2": {
       "inputs": {
         "systems": "systems"
       },
@@ -72,7 +106,7 @@
         "type": "github"
       }
     },
-    "flake-utils_2": {
+    "flake-utils_3": {
       "inputs": {
         "systems": "systems_2"
       },
@@ -169,7 +203,7 @@
     },
     "nix2container": {
       "inputs": {
-        "flake-utils": "flake-utils_2",
+        "flake-utils": "flake-utils_3",
         "nixpkgs": [
           "nixpkgs"
         ]
@@ -190,11 +224,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1678875422,
-        "narHash": "sha256-T3o6NcQPwXjxJMn2shz86Chch4ljXgZn746c2caGxd8=",
+        "lastModified": 1667639549,
+        "narHash": "sha256-frqZKSG/933Ctwl9voSZnXDwo8CqddXcjQhnCzwNqaM=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "126f49a01de5b7e35a43fd43f891ecf6d3a51459",
+        "rev": "cae3751e9f74eea29c573d6c2f14523f41c2821a",
         "type": "github"
       },
       "original": {
@@ -256,6 +290,22 @@
     },
     "nixpkgs_2": {
       "locked": {
+        "lastModified": 1678875422,
+        "narHash": "sha256-T3o6NcQPwXjxJMn2shz86Chch4ljXgZn746c2caGxd8=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "126f49a01de5b7e35a43fd43f891ecf6d3a51459",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_3": {
+      "locked": {
         "lastModified": 1704722960,
         "narHash": "sha256-mKGJ3sPsT6//s+Knglai5YflJUF2DGj7Ai6Ynopz0kI=",
         "owner": "NixOS",
@@ -276,7 +326,7 @@
           "devenv",
           "flake-compat"
         ],
-        "flake-utils": "flake-utils",
+        "flake-utils": "flake-utils_2",
         "gitignore": "gitignore",
         "nixpkgs": [
           "devenv",
@@ -300,11 +350,12 @@
     },
     "root": {
       "inputs": {
+        "corepack": "corepack",
         "devenv": "devenv",
         "flake-parts": "flake-parts",
         "mk-shell-bin": "mk-shell-bin",
         "nix2container": "nix2container",
-        "nixpkgs": "nixpkgs_2"
+        "nixpkgs": "nixpkgs_3"
       }
     },
     "systems": {
