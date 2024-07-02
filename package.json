@@ -75,5 +75,6 @@
     "build:firefox:popup": "BUILD_ENTRY=popup vite build --mode=firefox",
     "build:firefox": "npm run env:build  firefox && concurrently --kill-others-on-fail 'npm:build:firefox:*'"
   },
-  "type": "module"
+  "type": "module",
+  "packageManager": "pnpm@9.4.0+sha1.9217c800d4ab947a7aee520242a7b70d64fc7638"
 }
