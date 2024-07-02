@@ -498,21 +498,15 @@ SEARCH
 #reindex-nxql {
   width: 165px;
   font-weight: 600;
-  background-color: #fff;
-  color: #1F28BF;
 }
 
 #reindex-repo:hover,
 #reindex-nxql:hover {
-  background-color: #fff;
-  color: #FF9E00;
   transition: all 300ms ease;
 }
 
 .active#reindex-repo,
 .active#reindex-nxql {
-  background-color: #0D112A;
-  color: #fff;
 }
 
 #reindex-form {

@@ -15,7 +15,7 @@ const env = {
   VITE_BUILD_TIMESTAMP: Date.now(),
   VITE_BUILD_VERSION: buildVersion,
   VITE_BUILD_VERSION_NAME: buildVersionName,
-  VITE_DEVELOPMENT_MODE: process.env.NODE_ENV === 'development',
+  VITE_DEVELOPMENT_MODE: process.env.NODE_ENV !== 'production',
 };
 
 const content = Object.entries(env)

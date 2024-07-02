@@ -319,10 +319,11 @@ function loadPage(worker) {
       // being resolved in promise for handles, better be bound in a dedicated class I think
       let onUI;
       let repository = 'default';
+      let serverRuntimeInfo;
       let serverUrl;
 
       const regexes = {};
-      regexes.uuid = /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/;
+      regexes.uuid = /(?:(?<uuid>[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})|uuid:(?<uuidAny>.*))/;
       regexes.repo = /[A-Za-z_\.0-9-]+/;
       regexes.path = /\/[A-Za-z\.0-9_\- \/%~:?#'"]+/;
 
@@ -370,6 +371,7 @@ function loadPage(worker) {
       function hideActionsAndToggles() {
         $('.buttons').css('display', 'none');
         $('.toggles').css('display', 'none');
+        $('.search').css('display', 'none');
       }
 
       pendingPromises.push(
@@ -386,8 +388,7 @@ function loadPage(worker) {
           hideActionsAndToggles();
         })
         .catch((error) => {
-          worker.developmentMode.asConsole()
-            .then((console) => console.warn('Not connected, cannot check user role', error));
+          console.warn('Not connected, cannot check user role', error);
           hideActionsAndToggles();
         }));
 
@@ -442,15 +443,10 @@ function loadPage(worker) {
             serverUrl: serverLocation,
             connectUrl: connectLocation,
             connectSubscription,
-            developmentMode, 
+            developmentMode,
             package: registeredPackage
           } = registration;
-          if (!developmentMode) {
-            $('div.shade').show();
-            $('#development-mode-disabled').show();
-            $('#development-mode-disabled #serverUrl').text(serverLocation);
-          }
-          if (connectSubscription.errorMessage) {
+          if (connectSubscription && connectSubscription.errorMessage) {
             const alertText = `
     Cannot retrieve your server registration from \`${connectUrl}\`...
     <br/>Most probably your CLID is invalid or missing !
@@ -480,20 +476,24 @@ function loadPage(worker) {
       pendingPromises.push(worker
         .serverConnector
         .asRuntimeInfo()
-        .then((info) => {
-          const nuxeoServerVersion = NuxeoServerVersion.create(info.nuxeo.serverVersion.version);
+        .then((runtimeInfo) => {
+          if (!runtimeInfo.nuxeo.connected) {
+            return Promise.resolve();
+          }
+          const nuxeoServerVersion = NuxeoServerVersion.create(runtimeInfo.nuxeo.serverVersion.version);
           const lts2019 = NuxeoServerVersion.create('10.10');
-          serverUrl = info.serverUrl.replace(/\/$/, '');
+          serverRuntimeInfo = runtimeInfo;
+          serverUrl = runtimeInfo.serverUrl.replace(/\/$/, '');
           const serverString = DOMPurify.sanitize(serverUrl);
 
           const promises = [
-            Promise.resolve($('#platform-version').text(` ${info.nuxeo.serverVersion.version}`)),
+            Promise.resolve($('#platform-version').text(` ${runtimeInfo.nuxeo.serverVersion.version}`)),
             nuxeoServerVersion.lt(lts2019)
               ? worker.browserStore.set({ highlight: true }).then(() => adjustStorageButtons())
               : Promise.resolve(),
             Promise.resolve($('div.server-name-url').text(serverString)),
             Promise.resolve(registerLink('#automation-doc', serverUrl.concat('/site/automation/doc/'))),
-            Promise.resolve(info.installedAddons)
+            Promise.resolve(runtimeInfo.installedAddons)
               .then((addons) => {
                 if (!addons.includes('nuxeo-web-ui')) {
                   $('#designer-livepreview').hide();
@@ -517,10 +517,10 @@ function loadPage(worker) {
           function exportCurrentLink(docPathOrId) {
             $('#export-current').css('display', 'block');
             $('#export-current').click(() => {
-              if (regexes.uuid.test(docPathOrId)) {
-                getJsonFromGuid(docPathOrId);
-              } else if (docPathOrId.startsWith('/')) {
+              if (docPathOrId.startsWith('/')) {
                 getJsonFromPath(docPathOrId);
+              } else {
+                getJsonFromGuid(docPathOrId);
               }
             });
           }
@@ -689,9 +689,18 @@ function loadPage(worker) {
       };
 
       $('#restart-button').on('click', () => {
+        if (!serverRuntimeInfo.nuxeo.user.isAdministrator) {
+          Swal.fire({
+            title: 'Warning',
+            text: 'You do not have administrator privileges.',
+            icon: 'warning',
+            confirmButtonText: 'OK',
+          });
+          return;
+        }
         Swal.fire({
           title: 'Warning!',
-          text: 'Are you sure you want to restart the server?',
+          text: 'You have administrator privileges, but are you sure you want to restart the server?',
           showCancelButton: true,
           confirmButtonText: 'Restart',
           cancelButtonText: 'Cancel',
@@ -727,13 +736,31 @@ function loadPage(worker) {
 
       // Handle click event for the 'reindex' button
       $('#reindex').click(() => {
-        if ($('#reindex-repo').hasClass('active')) {
-          worker.repositoryIndexer.reindex();
+        const reindex = () => {
+          if ($('#reindex-repo').hasClass('active')) {
+            worker.repositoryIndexer.reindex();
+          } else {
+            $('#reindex-form').show();
+            const input = $('#reindex-input').val();
+            $('#reindex-input').val('');
+            worker.repositoryIndexer.reindex(input);
+          }
+        };
+        if (serverRuntimeInfo.connectRegistration.developmentMode) {
+          reindex();
         } else {
-          $('#reindex-form').show();
-          const input = $('#reindex-input').val();
-          $('#reindex-input').val('');
-          worker.repositoryIndexer.reindex(input);
+          Swal.fire({
+            title: 'Warning!',
+            text: 'You are not in development development mode, are you sure you want to re-index the server?',
+            showCancelButton: true,
+            confirmButtonText: 'Re-index',
+            cancelButtonText: 'Cancel',
+          }).then((result) => {
+            if (!result.isConfirmed) {
+              return;
+            }
+            reindex();
+          });
         }
       });
 
@@ -781,12 +808,14 @@ function loadPage(worker) {
             $('#search').css('text-indent', '5px');
             $('body').css('overflow-y', 'hidden');
             $('html').css('height', 'auto');
-          } else if (regexes.uuid.test(input)) {
-            getJsonFromGuid(input);
-            $('#loading-gif').css('display', 'none');
-            $('#search').css('text-indent', '5px');
           } else if (pathPattern.test(input)) {
             getJsonFromPath(input);
+            $('#loading-gif').css('display', 'none');
+            $('#search').css('text-indent', '5px');
+          } else if (regexes.uuid.test(input)) {
+            const match = regexes.uuid.exec(input);
+            const uuid = match.groups.uuid || match.groups.uuidAny;
+            getJsonFromGuid(uuid);
             $('#loading-gif').css('display', 'none');
             $('#search').css('text-indent', '5px');
           } else if (
