@@ -199,13 +199,9 @@ class ServerConnector extends ServiceWorkerComponent {
   }
 
   asNuxeo() {
-    return new Promise((resolve, reject) => {
-      if (this.nuxeo) {
-        resolve(this.nuxeo);
-      } else {
-        reject(new Error('Not connected to Nuxeo'));
-      }
-    });
+    return this.worker.tabNavigationHandler.asServerUrl()
+      .then((serverUrl) => this.connect(serverUrl))
+      .then(() => this.nuxeo);
   }
 
   serverErrorDesktopNotification = {

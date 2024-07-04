@@ -61,63 +61,6 @@ class TabNavigationHandler extends ServiceWorkerComponent {
         .then(() => tabInfo));
   }
 
-  // eslint-disable-next-line no-unused-vars
-  activate(self) {
-    // disable extension by default
-    chrome.action.disable();
-
-    return Promise.resolve([])
-      .then((undoStack) => {
-        // tab activation handle
-        const tabActivatedHandle = (activeInfo) => chrome
-          .tabs.get(activeInfo.tabId, (tabInfo) => this
-            .enableExtensionIfNuxeoServerTab(tabInfo));
-        chrome.tabs.onActivated.addListener(tabActivatedHandle);
-        undoStack.push(() => chrome.tabs.onActivated.removeListener(tabActivatedHandle));
-        return undoStack;
-      })
-      .then((undoStack) => {
-        // tab update handle
-        const tabUpdatedHandle = (tabId, changeInfo, tabInfo) => {
-          if (changeInfo.status !== 'complete') return;
-
-          this.enableExtensionIfNuxeoServerTab(tabInfo);
-        };
-        chrome.tabs.onUpdated.addListener(tabUpdatedHandle);
-        undoStack.push(() => chrome.tabs.onUpdated.removeListener(tabUpdatedHandle));
-        return undoStack;
-      })
-      .then((undoStack) => {
-        // windows focus handle
-        const windowFocusHandle = (windowId) => {
-          if (windowId === chrome.windows.WINDOW_ID_NONE) return;
-          chrome.tabs.query({ active: true, windowId }, (tabs) => {
-            if (!tabs || tabs.length === 0) return;
-
-            this.enableExtensionIfNuxeoServerTab(tabs[0]);
-          });
-        };
-        chrome.windows.onFocusChanged.addListener(windowFocusHandle);
-        undoStack.push(() => chrome.windows.onFocusChanged.removeListener(windowFocusHandle));
-        return undoStack;
-      })
-      .then((undoStack) => {
-        // tab removed handle
-        // eslint-disable-next-line no-unused-vars
-        const tabRemovedHandle = (tabId, removeInfo) => {
-          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            if (!tabs || tabs.length === 0) return;
-
-            this.enableExtensionIfNuxeoServerTab(tabs[0]);
-          });
-        };
-        chrome.tabs.onRemoved.addListener(tabRemovedHandle);
-        undoStack.push(() => chrome.tabs.onRemoved.removeListener(tabRemovedHandle));
-        return undoStack;
-      })
-      .then((undoStack) => () => undoStack.forEach((cleanup) => cleanup()));
-  }
-
   enableExtensionIfNuxeoServerTab(tabInfo) {
     return this.worker.developmentMode.asConsole()
       .then((console) => this
@@ -142,9 +85,12 @@ class TabNavigationHandler extends ServiceWorkerComponent {
         .finally(() => console.log('Handled tab activation <- done', tabInfo)));
   }
 
-  asServerUrl(tabInfo) {
-    return this.asPromise()
-      .then((self) => self.nuxeoUrlOf(tabInfo))
+  asServerUrl() {
+    let queryOptions = { active: true, lastFocusedWindow: true };
+    return chrome.tabs.query(queryOptions)
+      .then(([tabInfo]) => {
+        this.nuxeoUrlOf(tabInfo)
+      })
       .then((nuxeoUrl) => {
         if (!nuxeoUrl) return undefined;
         return fetch(`${nuxeoUrl}/site/automation`, {
