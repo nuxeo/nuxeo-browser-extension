@@ -233,18 +233,18 @@ class ServerConnector extends ServiceWorkerComponent {
   asNuxeo() {
     return this.worker
       .tabNavigationHandler.asTabInfo()
-      .then((tabInfo) => this.nuxeoUrlOf(tabInfo.url))
-      .then((nuxeoUrl) => {
-        if (nuxeoUrl === undefined) {
-          return undefined;
+      .then((tabInfo) => {
+        const serverUrl = this.nuxeoUrlOf(tabInfo.url);
+        if (serverUrl === undefined) {
+          throw new Error(`${tabInfo.url} not handled has a nuxeo URL, are you on the correct tab ?`);
         }
-        if (this.nuxeo && this.nuxeo._baseURL === nuxeoUrl.toString()) {
+        if (this.nuxeo && this.nuxeo._baseURL === serverUrl.toString()) {
           return this.nuxeo;
         }
         return this.connect(serverUrl, tabInfo)
           .then(() => {
             if (this.nuxeo === undefined) {
-              throw Error('Not connected to Nuxeo');
+              throw new Error(`Cannot connect to ${serverUrl}`);
             }
             return this.nuxeo;
           })
