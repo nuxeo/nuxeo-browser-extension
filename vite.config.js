@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable no-cond-assign */
 /* eslint-disable comma-dangle */
 import copy from 'rollup-plugin-copy';
 import dotenv from 'dotenv';
@@ -7,13 +9,10 @@ import fse from 'fs-extra';
 import path from 'path';
 import * as rimraf from 'rimraf';
 import { defineConfig } from 'vite';
-import { createRequire } from 'module';
-
-const require = createRequire(import.meta.url);
-
-const parser = require('@babel/parser');
-const traverse = require('@babel/traverse');
-const generate = require('@babel/generator');
+import * as parser from '@babel/parser';
+import traverse from '@babel/traverse';
+import generate from '@babel/generator';
+import MagicString from 'magic-string';
 
 export default defineConfig(({ mode }) => {
   const isProduction = process.env.NODE_ENV === 'production';
@@ -22,29 +21,38 @@ export default defineConfig(({ mode }) => {
 
   dotenv.config({ path: path.resolve(process.cwd(), `.env.${mode}`) });
 
-  const buildEntry = process.env.BUILD_ENTRY;
   const browserVendor = process.env.VITE_BROWSER_VENDOR;
 
-  console.log(`Building ${buildEntry} for ${browserVendor}...`);
+  const buildEntries = [
+    { root: 'about', input: 'index.html' },
+    { root: 'content', input: 'main.js' },
+    { root: 'json', input: 'index.html' },
+    { root: 'options', input: 'index.html' },
+    { root: 'main', input: `main-${browserVendor}.js`, copyPublicDir: true },
+    { root: 'popup', input: 'index.html' },
+    { root: 'es-reindex', input: 'index.html' },
+  ];
 
-  const paths = {
-    about: { input: 'about/index.html' },
-    content: { input: 'content/main.js' },
-    json: { input: 'json/index.html' },
-    options: { input: 'options/index.html' },
-    main: { input: `main/main-${browserVendor}.js`, copyPublicDir: true },
-    popup: { input: 'popup/index.html' },
-  };
+  const buildEntryByRoot = buildEntries.reduce((acc, entry) => {
+    acc[entry.root] = entry;
+    return acc;
+  }, {});
 
-  if (!Object.prototype.hasOwnProperty.call(paths, buildEntry)) {
-    throw new Error(`Invalid entry: ${buildEntry}`);
+  const buildEntry = buildEntryByRoot[process.env.BUILD_ENTRY];
+  if (!buildEntry) {
+    throw new Error(`Invalid entry: ${process.env.BUILD_ENTRY}`);
   }
+  console.log(`Building ${buildEntry.root} for ${browserVendor}...`);
 
   const viteConfig = {
+    css: {
+      transformer: 'lightningcss'
+    },
     build: {
-      assetsDir: '.', // relative to outDir
+      base: './',
+      assetsDir: './', // relative to outDir
       outDir: `dist/${browserVendor}`,
-      copyPublicDir: paths[buildEntry].copyPublicDir || false,
+      copyPublicDir: buildEntry.copyPublicDir || false,
       minify: isProduction ? 'terser' : false,
       plugins: [
         inject({
@@ -52,18 +60,24 @@ export default defineConfig(({ mode }) => {
           jQuery: 'jquery'
         })
       ],
+      publicDir: 'public',
       rollupOptions: {
-        input: `src/${paths[buildEntry].input}`,
+        input: `src/${buildEntry.root}/${buildEntry.input}`,
         output: {
-          dir: `dist/${browserVendor}/${buildEntry}`,
+          dir: `dist/${browserVendor}/${buildEntry.root}`,
           format: 'es',
           inlineDynamicImports: false,
-          entryFileNames: '[name]/index.js',
-          chunkFileNames: 'chunks/[name].js',
+          assetFileNames: '[name]-[hash][extname]',
+          entryFileNames: () => {
+            if (buildEntry.root === 'main') {
+              return `main-${browserVendor}.js`;
+            }
+            return '[name]-[hash].js';
+          },
         },
       },
       sourcemap: true,
-      target: 'es2020',
+      target: 'es2022',
     },
     plugins: [
       copy({
@@ -77,9 +91,107 @@ export default defineConfig(({ mode }) => {
         hook: 'writeBundle', // run the plugin at the end of bundling
       }),
       {
+        name: 'css-in-js-handler',
+        transform(code, id) {
+          const allowedSuffixes = ['.js', '.ts'];
+          const fileSuffix = id.slice(id.lastIndexOf('.'));
+          if (!allowedSuffixes.some((suffix) => fileSuffix === suffix)) {
+            return null; // Skip transformation for non-JS/TS files
+          }
+          // Separate function to handle CSS imports
+          function handleCSSImports() {
+            const cssImportRegex = /import\s+['"](.+\.css)['"]/g;
+            code.replace(cssImportRegex, (match, cssPath, offset) => {
+              const start = offset;
+              const end = start + match.length;
+              const replacementText = `import('${cssPath}').then(css => css.default)`;
+              magicString.overwrite(start, end, replacementText);
+              return replacementText; // This return value is not used since we're modifying magicString directly
+            });
+          }
+
+          console.log(`Processing CSS imports in ${id}...`);
+
+          const magicString = new MagicString(code);
+
+          // Call the separate functions
+          handleCSSImports(magicString);
+
+          return {
+            code: magicString.toString(),
+            map: magicString.generateMap({ hires: true })
+          };
+        },
+      },
+      {
+        name: 'patch-assets-url',
+        apply: 'build',
+        generateBundle(options, bundle) {
+          Object.keys(bundle).forEach((fileName) => {
+            const chunk = bundle[fileName];
+            if (!(chunk.type === 'chunk' && chunk.fileName.endsWith('.js'))) {
+              return;
+            }
+            const regex = /const assetsURL = function\(dep\) {\s*return "\/" \+ dep;\s*};/g;
+            const match = regex.exec(chunk.code);
+            if (!match) {
+              return;
+            }
+            console.log(`Patching assetsURL function in ${fileName}`);
+            // Replace the matched string with the new implementation
+            const magicString = new MagicString(chunk.code);
+            magicString.overwrite(match.index, match.index + match[0].length, 'const assetsURL = (dep) => dep;');
+            chunk.code = magicString.toString();
+            // chunk.map = magicString.generateMap({ hires: true });
+          });
+        }
+      },
+      {
+        name: 'patch-css-urls',
+        apply: 'build',
+        writeBundle(options, bundle) {
+          Object.keys(bundle).forEach((fileName) => {
+            const chunk = bundle[fileName];
+            if (!(chunk.type === 'asset' && chunk.fileName.endsWith('.css'))) {
+              return;
+            }
+            const filePath = path.join(options.dir || '.', chunk.fileName);
+            fs.readFile(filePath, 'utf8', (err, data) => {
+              if (err) {
+                console.error(`Error reading ${filePath}: ${err}`);
+                return;
+              }
+              // Updated regex to exclude URLs starting with "/images/"
+              const urlRegex = /url\("\/(?!images\/)(.*?)"\)/g;
+              const magicString = new MagicString(data);
+              let hasChanges = false;
+
+              data.replace(urlRegex, (match, p1, offset) => {
+                const originalUrl = `url("/${p1}")`;
+                const fixedUrl = `url("${p1}")`;
+                magicString.overwrite(offset, offset + originalUrl.length, fixedUrl);
+                hasChanges = true;
+                return fixedUrl;
+              });
+
+              if (!hasChanges) {
+                return;
+              }
+              console.log(`Patching URLs in ${filePath}`);
+              fs.writeFile(filePath, magicString.toString(), 'utf8', (writeErr) => {
+                if (!writeErr) {
+                  return;
+                }
+                console.error(`Error writing ${filePath}: ${writeErr}`);
+              });
+            });
+          });
+        }
+      },
+      {
         name: 'rename-main-service',
         generateBundle(options, bundle) {
-          if (buildEntry !== 'main') return; // Only process the main entry
+          if (buildEntry.root !== 'main') return; // Only process the main entry
 
           console.log(`Renaming service_worker for ${browserVendor}... `);
 
@@ -111,7 +223,7 @@ export default defineConfig(({ mode }) => {
           });
         },
         writeBundle() {
-          if (buildEntry !== 'main') return; // Only process the main entry
+          if (buildEntry.root !== 'main') return; // Only process the main entry
 
           // Move contents of main directory to root
           fse.copySync(path.resolve(__dirname, `dist/${browserVendor}/main`), path.resolve(__dirname, `dist/${browserVendor}`));
@@ -122,7 +234,7 @@ export default defineConfig(({ mode }) => {
         name: 'replace-global-window-with-self',
         apply: 'build',
         renderChunk(code, chunk) {
-          if (buildEntry !== 'main') return null; // Only process the main entry
+          if (buildEntry.root !== 'main') return null; // Only process the main entry
 
           // Parse the code into an AST
           const ast = parser.parse(code);
@@ -152,38 +264,138 @@ export default defineConfig(({ mode }) => {
         },
       },
       {
-        name: 'rename-popup-bundles',
+        name: 'reparent-bundles',
         apply: 'build',
         generateBundle(_, bundle) {
-          if (!paths[buildEntry].input.endsWith('.html')) return; // Process only html entry points
+          if (!buildEntry.input.endsWith('.html')) return; // Process only html entry points
 
-          console.log('Reparenting popup bundles ...');
+          console.log('Reparenting bundles ...');
           Object.keys(bundle).forEach((name) => {
             const file = bundle[name];
-
-            console.log(`Processing file: ${file.fileName}, type: ${file.type}, isEntry: ${file.isEntry}...`);
-
             file.fileName = file.fileName.replace('index/', '');
-
-            console.log(`Reparented to: ${file.fileName}...`);
+            console.log(`  - ${file.fileName}...`);
           });
         },
-        writeBundle() {
-          console.log(`vendor is  ${browserVendor}...`);
-          if (!paths[buildEntry].input.endsWith('.html')) return; // Process only html entry points
+        // eslint-disable-next-line no-unused-vars
+        writeBundle(options, bundle) {
+          if (!buildEntry.input.endsWith('.html')) return; // Process only html entry points
 
           // Move index.html to root and update script source
-          const htmlFilePath = path.resolve(__dirname, `dist/${browserVendor}/${buildEntry}/src/${buildEntry}/index.html`);
-          let htmlContent = fs.readFileSync(htmlFilePath, 'utf-8');
-          htmlContent = htmlContent.replace(/"\/(index[^"]*)"/g, '"./$1"');
-          fs.writeFileSync(path.resolve(__dirname, `dist/${browserVendor}/${buildEntry}/index.html`), htmlContent);
-          fs.unlinkSync(htmlFilePath);
-
-          // Remove src directory
-          rimraf.sync(path.resolve(__dirname, `dist/${browserVendor}/${buildEntry}/src`));
+          const htmlFilePath = path.resolve(__dirname, `dist/${browserVendor}/${buildEntry.root}/src/${buildEntry.root}/index.html`);
+          fs.promises.readFile(htmlFilePath, 'utf-8')
+            .then((data) => {
+              const magicString = new MagicString(data);
+              const matches = [...data.matchAll(/"\/(index[^"]*)"/g)];
+              matches.forEach((match) => {
+                const start = match.index;
+                const end = start + match[0].length;
+                magicString.overwrite(start, end, `"./${match[1]}"`);
+              });
+              return magicString.toString(); // Use the modified content
+            })
+            .then((modifiedHtmlContent) => {
+              fs.promises.writeFile(path.resolve(__dirname, `dist/${browserVendor}/${buildEntry.root}/index.html`), modifiedHtmlContent);
+              return fs.promises.unlink(htmlFilePath);
+            })
+            .then(() => {
+              // Remove src directory
+              rimraf.sync(path.resolve(__dirname, `dist/${browserVendor}/${buildEntry.root}/src`));
+            })
+            .catch((err) => {
+              console.error(`Got an error trying to read or write the file: ${err.message}`);
+            });
         }
       },
-      // other plugins...
+      {
+        name: 'recompute-source-map',
+        writeBundle(options, bundle) {
+          if (true) return; // Skip this plugin for now
+          console.log('--- recompute-source-map writeBundle ---');
+          //
+          Object.keys(bundle).forEach((name) => {
+            const file = bundle[name];
+            if (file.type === 'chunk' && file.code) {
+              const magicString = new MagicString(file.code);
+
+              // Generate a new source map
+              const newMap = magicString.generateMap({
+                source: file.fileName,
+                file: `${file.fileName}.map`,
+                hires: true
+              });
+
+              // Override the existing source map
+              file.map = newMap;
+
+              console.log(`Recomputed source map for ${file.fileName}`);
+              const newMapString = JSON.stringify(newMap);
+              console.log(`  - Source map size: ${newMapString.length}`);
+              console.log(`  - Source map content: ${newMapString.slice(0, 100)}...`); // Log first 100 characters for brevity
+
+              // Ensure the sourceMappingURL comment is correct
+              if (!file.code.includes('//# sourceMappingURL=')) {
+                file.code += `\n//# sourceMappingURL=${file.fileName}.map`;
+              }
+            }
+          });
+        }
+      },
+      {
+        name: 'extended-debug-build',
+        generateBundle(options, bundle) {
+          console.log('--- generateBundle ---');
+          this.bundleState = {};
+
+          Object.keys(bundle).forEach((name) => {
+            const file = bundle[name];
+            console.log(`- ${file.fileName}`);
+
+            if (file.fileName.endsWith('.map')) {
+              console.log(`  - Source map size: ${file.source.length}`);
+              console.log(`  - Source map content: ${file.source.slice(0, 100)}...`); // Log first 100 characters for brevity
+            }
+
+            this.bundleState[file.fileName] = {
+              code: file.code,
+              sourceMap: file.source,
+            };
+          });
+        },
+        writeBundle(options, bundle) {
+          console.log('--- writeBundle ---');
+
+          Object.keys(bundle).forEach((name) => {
+            const file = bundle[name];
+            console.log(`- ${file.fileName}`);
+
+            if (file.fileName.endsWith('.map')) {
+              const originalSourceMap = this.bundleState[file.fileName]?.sourceMap;
+              const currentSourceMap = file.source;
+
+              if (originalSourceMap !== currentSourceMap) {
+                console.log(`  - Source map has changed for ${file.fileName}`);
+                console.log(`  - Original source map content: ${originalSourceMap?.slice(0, 100)}...`);
+                console.log(`  - Current source map content: ${currentSourceMap.slice(0, 100)}...`);
+              } else {
+                console.log(`  - Source map has not changed for ${file.fileName}`);
+              }
+
+              console.log(`  - Current source map size: ${currentSourceMap.length}`);
+            }
+
+            const originalCode = this.bundleState[file.fileName]?.code;
+            const currentCode = file.code;
+
+            if (originalCode !== currentCode) {
+              console.log(`  - Code has changed for ${file.fileName}`);
+              console.log(`  - Original code size: ${originalCode?.length}`);
+              console.log(`  - Current code size: ${currentCode.length}`);
+            } else {
+              console.log(`  - Code has not changed for ${file.fileName}`);
+            }
+          });
+        }
+      },
     ],
     server: {
       watch: {

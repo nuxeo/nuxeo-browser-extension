@@ -746,8 +746,33 @@ function loadPage(worker) {
         }
       });
 
+      const navigateLink = (event) => {
+        event.preventDefault();
+        const linkHref = $(event.currentTarget).attr('href');
+
+        return fetch(chrome.runtime.getURL(linkHref))
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error('Network response was not ok');
+            }
+            return response.text();
+          })
+          .then((html) => {
+            $('body').html(html);
+            // If the loaded page has its own scripts, you might need to reinitialize them here
+          })
+          .catch((error) => {
+            console.error('Error loading page:', error);
+          });
+      };
+      $('#reindex-es-button').on('click', navigateLink);
+      // eslint-disable-next-line prefer-arrow-callback
+      $(document).on('click', '#back', function (event) {
+        navigateLink(event).then(() => loadPage(worker));
+      });
+
       // Handle click events for the radio buttons
-      $('#reindex-repo, #reindex-nxql').click(function () {
+      $(document).on('click', '#reindex-repo, #reindex-nxql', function () {
         // Toggle 'active' class for the clicked button
         $(this).toggleClass('active');
 
@@ -767,7 +792,7 @@ function loadPage(worker) {
       });
 
       // Handle click event for the 'reindex' button
-      $('#reindex').click(() => {
+      $(document).on('click', '#reindex', () => {
         const reindex = () => {
           if ($('#reindex-repo').hasClass('active')) {
             worker.repositoryIndexer.reindex();

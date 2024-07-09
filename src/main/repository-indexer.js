@@ -1,3 +1,4 @@
+/* eslint-disable max-classes-per-file */
 /*
 Copyright 2016-2024 Nuxeo
 
@@ -15,6 +16,17 @@ limitations under the License.
 */
 
 import ServiceWorkerComponent from './service-worker-component';
+
+class IndexingError extends Error {
+  constructor(message, data) {
+    super(message); // Call the parent class constructor with the message
+    this.name = this.constructor.name; // Set the error name to the class name
+    this.data = data; // Custom data related to the error
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor);
+    }
+  }
+}
 
 class RepositoryIndexer extends ServiceWorkerComponent {
   constructor(worker) {
@@ -45,12 +57,7 @@ class RepositoryIndexer extends ServiceWorkerComponent {
         return true;
       })
       .catch((cause) => {
-        this.worker.desktopNotifier.notify('repository-reindexing', {
-          title: 'Something went wrong...',
-          message: `${cause.message}\nPlease try again later.`,
-          iconUrl: '../images/access_denied.png',
-        });
-        return false;
+        throw new IndexingError(cause.message, cause);
       });
   }
 
@@ -64,11 +71,7 @@ class RepositoryIndexer extends ServiceWorkerComponent {
       })
       .then(() => { this.waiting = undefined; })
       .catch((cause) => {
-        this.worker.desktopNotifier.notify('repository-reindexing', {
-          title: 'Something went wrong...',
-          message: `${cause.message}\nPlease try again later.`,
-          iconUrl: '../images/access_denied.png',
-        });
+        throw new IndexingError(cause.message, cause);
       });
     return this.waiting;
   }
