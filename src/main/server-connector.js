@@ -27,6 +27,12 @@ class GroovyScriptManager {
   }
 }
 
+class ServerError extends Error {
+  constructor(message, info) {
+    super(message);
+    this.info = info;
+  }
+}
 class ServerConnector extends ServiceWorkerComponent {
   constructor(worker) {
     super(worker);
@@ -77,7 +83,7 @@ class ServerConnector extends ServiceWorkerComponent {
   checkAvailability() {
     return this.isConnected()
       .then((isConnected) => {
-        if (!isConnected) throw new Error('Not connected to Nuxeo');
+        if (!isConnected) throw new ServerError('Not connected to Nuxeo');
       });
   }
 
@@ -97,7 +103,7 @@ class ServerConnector extends ServiceWorkerComponent {
   connect(serverUrl, tabInfo) {
     const forbiddenDomains = ['connect.nuxeo.com', 'nos-preprod-connect.nuxeocloud.com'];
     if (forbiddenDomains.includes(serverUrl.host)) { // should use another way to detect a connect server
-      return Promise.reject(new Error(`Connection to ${serverUrl.host} is forbidden`));
+      return Promise.reject(new ServerError(`Connection to ${serverUrl.host} is forbidden`));
     }
     this.serverUrl = serverUrl;
     this.nuxeo = new Nuxeo({ baseURL: serverUrl.toString() });
@@ -119,13 +125,7 @@ class ServerConnector extends ServiceWorkerComponent {
         this.disconnect = () => {};
         this.nuxeo = undefined;
         this.serverUrl = undefined;
-        console.warn(`Cannot connect to : ${serverUrl}...`, cause);
-        this.worker.desktopNotifier.notify('error', {
-          title: `Cannot connect to : ${serverUrl}...`,
-          message: `Got errors while accessing nuxeo at ${serverUrl}. Error: ${cause.message}`,
-          iconUrl: '../images/access_denied.png',
-        });
-        return () => {};
+        throw new ServerError(`Cannot establish connection with ${serverUrl}`, this.handleErrors(cause));
       });
   }
 
@@ -234,15 +234,38 @@ class ServerConnector extends ServiceWorkerComponent {
     return this.worker
       .tabNavigationHandler.asTabInfo()
       .then((tabInfo) => {
-        const serverUrl = this.nuxeoUrlOf(tabInfo.url);
+        let serverUrl = this.nuxeoUrlOf(tabInfo.url);
         if (serverUrl === undefined) {
-          throw new Error(`${tabInfo.url} not handled has a nuxeo URL, are you on the correct tab ?`);
+          // Extract base URL
+          const baseUrl = new URL(tabInfo.url).origin;
+          // Extract context path from the tab URL
+          const urlPath = new URL(tabInfo.url).pathname;
+          const contextPath = urlPath.split('/')[1]; // Assuming the context path is the first segment after the base URL
+          // Construct the running status URL with context path
+          const runningStatusUrl = `${baseUrl}/${contextPath}/runningstatus`;
+          // Check the running status
+          return fetch(runningStatusUrl)
+            .then((response) => response.json())
+            .then((json) => {
+              if (json.runtimeStatus === 'ok') {
+                serverUrl = `${baseUrl}/${contextPath}`; // Use the base URL with context path as the server URL
+                return { serverUrl, tabInfo };
+              } else {
+                throw new Error(`Nuxeo server at ${baseUrl}/${contextPath} is not running properly.`);
+              }
+            })
+            .catch((error) => {
+              throw new Error(`Error checking Nuxeo server status: ${error.message}`);
+            });
         }
+        return Promise.resolve({ serverUrl, tabInfo });
+      })
+      .then(({ serverUrl, tabInfo }) => {
         if (this.nuxeo && this.nuxeo._baseURL === serverUrl.toString()) {
           return this.nuxeo;
         }
         return this.connect(serverUrl, tabInfo)
-          .then(() => {
+          .then((info) => {
             if (this.nuxeo === undefined) {
               throw new Error(`Cannot connect to ${serverUrl}`);
             }
@@ -302,13 +325,6 @@ class ServerConnector extends ServiceWorkerComponent {
   };
 
   desktopNotify(id, notification) {
-    const { title, message, imageUrl } = notification;
-    console.group(`Notification: ${id}`);
-    console.log(`Title: ${title}`);
-    console.log(`Message: ${message}`);
-    console.log(`Image URL: ${imageUrl}`);
-    console.groupEnd();
-
     return this.worker
       .desktopNotifier
       .notify(id, { ...this.serverErrorDesktopNotification.options, ...notification });
@@ -336,40 +352,41 @@ class ServerConnector extends ServiceWorkerComponent {
       .then((json) => {
         const err = error.response.status;
         if (json.message === null) {
-          this.desktopNotify('no_hot_reload', {
+          return this.desktopNotify('no_hot_reload', {
             ...defaultNotification.options,
             title: 'Hot Reload Operation not found.',
             message: 'Your current version of Nuxeo does not support the Hot Reload function.',
             iconUrl: '/images/access_denied.png',
           });
-        } else if (err === 401) {
-          this.desktopNotify('access_denied', {
+        }
+        if (err === 401) {
+          return this.desktopNotify('access_denied', {
             ...defaultNotification.options,
             title: 'Access denied!',
-            message: 'You must have Administrator rights to perform this function.',
+            message: 'You should login to play with the nuxeo web extension.',
             iconUrl: '../images/access_denied.png',
           });
-        } else if (err >= 500) {
-          this.desktopNotify(defaultNotification.id, {
+        }
+        if (err >= 500) {
+          return this.desktopNotify(defaultNotification.id, {
             ...defaultNotification.options,
             message: `${defaultNotification.message}...\n${json.message}`,
           });
-        } else if (err >= 300 && err < 500) {
-          this.desktopNotify('bad_login', {
+        }
+        if (err >= 300 && err < 500) {
+          return this.desktopNotify('bad_login', {
             ...defaultNotification.options,
             title: 'Bad Login',
             message: 'Your Login and/or Password are incorrect',
             iconUrl: '/images/access_denied.png',
           });
-        } else {
-          this.desktopNotify('unknown_error', {
-            ...defaultNotification.options,
-            title: 'Unknown Error',
-            message: `An unknown error has occurred. Please try again later...\n${json.message}`,
-            iconUrl: '/images/access_denied.png',
-          });
         }
-        return error.response;
+        return this.desktopNotify('unknown_error', {
+          ...defaultNotification.options,
+          title: 'Unknown Error',
+          message: `An unknown error has occurred. Please try again later...\n${json.message}`,
+          iconUrl: '/images/access_denied.png',
+        });
       });
   }
 

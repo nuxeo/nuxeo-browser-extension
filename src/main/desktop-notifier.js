@@ -45,38 +45,36 @@ class DesktopNotifier extends ServiceWorkerComponent {
 
     return new Promise((resolve, reject) => {
       chrome.notifications.create(namespacedIdOf(id), options, (notificationId) => {
+        const notification = { id: notificationId, options };
         if (chrome.runtime.lastError) {
-	  // log the error
-          console.groupCollapsed('Notification Error');
-          console.warn('Failed to create notification');
+          // log the error
+          console.groupCollapsed('Notification: creation error');
+          console.info('Options', options);
           console.error(chrome.runtime.lastError);
-          console.info('Notification ID:', notificationId);
-          console.info('Options:', options);
           console.groupEnd();
 
           const error = new Error('Failed to create notification');
           error.cause = chrome.runtime.lastError;
-          error.info = { id: notificationId, options };
+          error.info = notification;
           return reject(error);
         }
 
-	// always log the notification
-        console.groupCollapsed('Created notification');
-        console.info('Notification ID:', notificationId);
-        console.info('Options:', options);
+        // always log the notification
+        console.group(`Notification: ${notificationId}`);
+        console.info(`Options: ${options}`);
         console.groupEnd();
 
-	// resolve if no acknowledge required
+        // resolve if no acknowledge required
         if (!options.requireInteraction) {
-          return resolve(notificationId); 
+          return resolve(notification);
         }
 
-	// wait for user acknowledge
+        // wait for user acknowledge
         const resolveIfMatchingId = (clickedId) => {
           if (clickedId !== notificationId) return;
-          resolve(notificationId);
+          resolve(notification);
         };
-        chrome.notifications.onClicked.addListener(resolveIfMatching)
+        chrome.notifications.onClicked.addListener(resolveIfMatchingId);
 
         // let's the caller informed of the asynch condition
         return undefined;
