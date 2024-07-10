@@ -95,8 +95,8 @@ class ServerConnector extends ServiceWorkerComponent {
   }
 
   connect(serverUrl, tabInfo) {
-    const forbiddenDomains = ['connect.nuxeo.com', 'nos-preprod-connect.nuxeo.com'];
-    if (forbiddenDomains.includes(serverUrl.host)) {
+    const forbiddenDomains = ['connect.nuxeo.com', 'nos-preprod-connect.nuxeocloud.com'];
+    if (forbiddenDomains.includes(serverUrl.host)) { // should use another way to detect a connect server
       return Promise.reject(new Error(`Connection to ${serverUrl.host} is forbidden`));
     }
     this.serverUrl = serverUrl;
