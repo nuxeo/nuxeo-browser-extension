@@ -46,6 +46,7 @@ class DesktopNotifier extends ServiceWorkerComponent {
     return new Promise((resolve, reject) => {
       chrome.notifications.create(namespacedIdOf(id), options, (notificationId) => {
         if (chrome.runtime.lastError) {
+	  // log the error
           console.groupCollapsed('Notification Error');
           console.warn('Failed to create notification');
           console.error(chrome.runtime.lastError);
@@ -58,14 +59,26 @@ class DesktopNotifier extends ServiceWorkerComponent {
           error.info = { id: notificationId, options };
           return reject(error);
         }
+
+	// always log the notification
+        console.groupCollapsed('Created notification');
+        console.info('Notification ID:', notificationId);
+        console.info('Options:', options);
+        console.groupEnd();
+
+	// resolve if no acknowledge required
         if (!options.requireInteraction) {
-          return resolve(notificationId);
+          return resolve(notificationId); 
         }
-        chrome.notifications.onClicked.addListener((clickedId) => {
-          if (clickedId === notificationId) {
-            resolve(notificationId);
-          }
-        });
+
+	// wait for user acknowledge
+        const resolveIfMatchingId = (clickedId) => {
+          if (clickedId !== notificationId) return;
+          resolve(notificationId);
+        };
+        chrome.notifications.onClicked.addListener(resolveIfMatching)
+
+        // let's the caller informed of the asynch condition
         return undefined;
       });
     });
