@@ -115,43 +115,47 @@ This extension is only compatible with Nuxeo Platform servers.
     return Promise.reject(this.connectionErrorOf(`Connection to ${serverUrl.host} is forbidden`, notification));
   }
 
-  connect(serverUrl, tabInfo, connectOptions = { forceForbiddenDomains: false }) {
-    return this.checkOperableDomain(serverUrl, connectOptions)
-      .then(() => new Nuxeo({ baseURL: serverUrl })
-        .connect()
-        .then((nuxeo) => {
-          this.nuxeo = nuxeo;
-          this.serverUrl = serverUrl;
-          return Promise.all([
-            this.asInstalledAddons().catch(() => []), // Return empty array on error
-            this.asConnectRegistration().catch(() => ({})), // Return empty object on error
-          ])
-            .then(([installedAddons, connectRegistration]) => ({
-              nuxeo,
-              serverUrl: nuxeo._baseURL,
-              installedAddons,
-              connectRegistration,
-            }))
-            .then((runtimeInfo) => {
-              this.disconnect = () => {
-                this.nuxeo = undefined;
-                this.runtimeInfo = undefined;
-                this.serverUrl = undefined;
-                this.worker.tabNavigationHandler.disableTabExtension(tabInfo);
-              };
-              this.nuxeo = nuxeo;
-              this.runtimeInfo = runtimeInfo;
-              this.worker.tabNavigationHandler.enableTabExtension(tabInfo);
-            });
-        })
-        .catch((cause) => {
-          this.disconnect = this.noop;
-          this.nuxeo = undefined;
-          this.runtimeInfo = undefined;
-          this.serverUrl = undefined;
-          const notification = this.notifyError(cause);
-          return Promise.reject(this.connectionErrorOf(`Cannot establish connection with ${serverUrl}`, notification));
-        }));
+  async connect(serverUrl, tabInfo, connectOptions = { forceForbiddenDomains: false }) {
+    await this.checkOperableDomain(serverUrl, connectOptions);
+
+    try {
+      this.nuxeo = await new Nuxeo({ baseURL: serverUrl }).connect();
+      this.serverUrl = serverUrl;
+    } catch (cause) {
+      this.disconnect = this.noop;
+      this.nuxeo = undefined;
+      this.runtimeInfo = undefined;
+      this.serverUrl = undefined;
+
+      const notification = this.notifyError(cause);
+      this.connectionErrorOf(`Cannot establish connection with ${serverUrl}`, notification);
+      return;
+    }
+
+    let installedAddons = [];
+    let connectRegistration = [];
+    if (this.nuxeo.user.isAdministrator) {
+      try {
+        installedAddons = await this.asInstalledAddons();
+        connectRegistration = await this.asConnectRegistration();
+      } catch (_) {
+      }
+    }
+
+    this.runtimeInfo = {
+      nuxeo: this.nuxeo,
+      serverUrl: this.nuxeo._baseURL,
+      installedAddons: installedAddons,
+      connectRegistration: connectRegistration
+    };
+    this.disconnect = () => {
+      this.nuxeo = undefined;
+      this.runtimeInfo = undefined;
+      this.serverUrl = undefined;
+      this.worker.tabNavigationHandler.disableTabExtension(tabInfo);
+    };
+
+    this.worker.tabNavigationHandler.enableTabExtension(tabInfo);
   }
 
   isConnected() {

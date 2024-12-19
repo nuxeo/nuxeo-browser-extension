@@ -21,3 +21,4 @@ selenium-standalone.txt
 .env.chrome
 .env.firefox
 .env.local
+app
