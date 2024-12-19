@@ -523,10 +523,10 @@ function loadPage(worker, options = { forceForbiddenDomains: false }) {
                     });
                 }
                 return Promise.all([
-                  worker.serverConnector
-                    .asConnectRegistration(),
-                  worker.serverConnector
-                    .asDevelopedStudioProjects()
+                  nuxeo.user.isAdministrator ? worker.serverConnector
+                    .asConnectRegistration() : Promise.resolve({}),
+                  nuxeo.user.isAdministrator ? worker.serverConnector
+                    .asDevelopedStudioProjects() : Promise.resolve([])
                     .then((projects) => {
                     // Remove any existing options
                       while (selectBox[0].firstChild) {
@@ -579,7 +579,7 @@ function loadPage(worker, options = { forceForbiddenDomains: false }) {
                     new URL(connectLocation),
                     registeredPackage
                   );
-                } else {
+                } else if (nuxeo.user.isAdministrator) {
                   noStudioPackageFound();
                 }
               })
