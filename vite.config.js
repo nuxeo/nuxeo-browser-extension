@@ -92,6 +92,15 @@ export default defineConfig(({ mode }) => {
         ],
         hook: 'writeBundle', // run the plugin at the end of bundling
       }),
+      copy({
+        targets: [
+          {
+            src: 'src/main/content-script.js',
+            dest: `dist/${browserVendor}`,
+          }
+        ],
+        // hook: 'writeBundle', // run the plugin at the end of bundling
+      }),
       htmlReparent({ browserVendor, buildEntry, sourceDir: 'src', outputDir: `dist/${browserVendor}` }),
       mainReparent({ browserVendor, buildEntry, sourceDir: 'src', outputDir: `dist/${browserVendor}` }),
       astPatch({ browserVendor, buildEntry }),
