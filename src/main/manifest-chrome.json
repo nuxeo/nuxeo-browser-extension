@@ -42,5 +42,14 @@
     },
     "default_title": "Nuxeo Dev Tools",
     "default_popup": "popup/index.html"
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": ["content-script.js"]
+    }
+  ]
 }
