@@ -196,37 +196,32 @@ This extension is only compatible with Nuxeo Platform servers.
     return this.executeScript('installed-addons');
   }
 
-  asDevelopedStudioProjects() {
-    return this.worker.connectLocator
-      .asRegistration()
-      .then(({ credentials }) => (credentials
-        ? this.worker.connectLocator.decodeBasicAuth(credentials)
-        : ['', '']))
-      .then(([login, token]) => this
-        .executeScript('developed-studio-projects', [login, token])
-        .then(({ developmentMode, projects }) => Promise
-          .all(projects
-            .map(({ packageName, isRegistered }) => this.worker.designerLivePreview
-              .isEnabled(packageName)
-              .then((isDesignerLivePreviewEnabled) => ({
-                packageName,
-                isRegistered,
-                isDesignerLivePreviewEnabled,
-                developmentMode,
-                serverUrl: this.serverUrl
-              }))
-              .catch((error) => (
-                {
-                  packageName,
-                  isRegistered,
-                  isDesignerLivePreviewEnabled: false,
-                  developmentMode,
-                  serverUrl: this.serverUrl,
-                  inError: {
-                    message: error.message,
-                    stack: error.stack,
-                  }
-                }))))));
+  async asDevelopedStudioProjects() {
+    const { credentials } = await this.worker.connectLocator.asRegistration();
+    const [login, token] = credentials
+      ? this.worker.connectLocator.decodeBasicAuth(credentials)
+      : ['', ''];
+
+    const { developmentMode, projects } = await this.executeScript('developed-studio-projects', [login, token]);
+
+    return Promise.all(
+      projects.map(async ({ packageName, isRegistered }) => {
+        const isDesignerLivePreviewEnabled = await this.worker.designerLivePreview
+          .isEnabled(packageName)
+          .catch(() => false);
+
+        return {
+          packageName,
+          isRegistered,
+          isDesignerLivePreviewEnabled,
+          developmentMode,
+          serverUrl: this.serverUrl,
+          ...(isDesignerLivePreviewEnabled === false && {
+            inError: { message: 'Failed to check designer live preview status' },
+          }),
+        };
+      })
+    );
   }
 
   registerDevelopedStudioProject(projectName) {

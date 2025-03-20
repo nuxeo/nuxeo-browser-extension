@@ -577,7 +577,7 @@ function loadPage(worker, options = { forceForbiddenDomains: false }) {
                   studioPackageFound(
                     developmentMode,
                     new URL(connectLocation),
-                    registeredPackage
+                    registeredPackage.name
                   );
                 } else if (nuxeo.user.isAdministrator) {
                   noStudioPackageFound();
