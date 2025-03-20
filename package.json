@@ -9,7 +9,7 @@
     "jquery": "^3.7.1",
     "just-debounce": "^1.1.0",
     "magic-string": "^0.30.10",
-    "nuxeo": "^4.0.3",
+    "nuxeo": "^4.0.5",
     "sweetalert2": "^11.12.2",
     "webextension-polyfill": "^0.10.0"
   },

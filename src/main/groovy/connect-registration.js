@@ -2,7 +2,9 @@ export default function connectRegistration() {
   return `
     import org.apache.commons.logging.Log
     import org.apache.commons.logging.LogFactory
-    import groovy.json.JsonOutput
+    import org.nuxeo.ecm.core.api.Blobs
+    import org.nuxeo.ecm.core.io.registry.MarshallerHelper
+    import org.nuxeo.ecm.core.io.registry.context.RenderingContext
     import org.nuxeo.connect.client.we.StudioSnapshotHelper
     import org.nuxeo.connect.connector.CanNotReachConnectServer
     import org.nuxeo.connect.connector.http.ConnectUrlConfig
@@ -43,7 +45,7 @@ export default function connectRegistration() {
         return gateway.getConnector().getConnectStatus()
       } catch (Exception cause) {
         SubscriptionStatus errorStatus = new SubscriptionStatus()
-        errorStatus.setErrorMessage(JsonOutput.toJson([message: cause.message, type: cause.getClass().getName()]))
+        errorStatus.setErrorMessage(Blobs.createJSONBlobFromValue([message: cause.message, type: cause.getClass().getName()]).getString())
         errorStatus.setContractStatus(SubscriptionStatusType.UNKNOWN.getValue())
         return errorStatus;
       }
@@ -68,6 +70,6 @@ export default function connectRegistration() {
       package: studioPackage,
     ]
 
-    println JsonOutput.toJson(output)
+    println Blobs.createJSONBlobFromValue(output).getString()
   `;
 }
