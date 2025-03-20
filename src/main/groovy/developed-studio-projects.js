@@ -1,6 +1,8 @@
 export default function developedStudioProjects(login = '', token = '') {
   return `
-    import groovy.json.JsonOutput
+    import org.nuxeo.ecm.core.api.Blobs
+    import org.nuxeo.ecm.core.io.registry.MarshallerHelper
+    import org.nuxeo.ecm.core.io.registry.context.RenderingContext
     import org.apache.commons.logging.Log
     import org.apache.commons.logging.LogFactory
     import org.nuxeo.connect.client.we.StudioSnapshotHelper
@@ -44,6 +46,6 @@ export default function developedStudioProjects(login = '', token = '') {
       developmentMode: developmentMode
     ];
 
-    println JsonOutput.toJson(output)
+    println Blobs.createJSONBlobFromValue(output).getString()
   `;
 }

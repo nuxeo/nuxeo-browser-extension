@@ -1,6 +1,8 @@
 export default function registerDevelopedStudioProject(login = '', token = '', projectName = '', clid = '') {
   return `
-    import groovy.json.JsonOutput
+    import org.nuxeo.ecm.core.api.Blobs
+    import org.nuxeo.ecm.core.io.registry.MarshallerHelper
+    import org.nuxeo.ecm.core.io.registry.context.RenderingContext
     import org.nuxeo.connect.connector.NuxeoClientInstanceType
     import org.nuxeo.connect.identity.LogicalInstanceIdentifier
     import org.nuxeo.connect.registration.RegistrationException
@@ -18,6 +20,6 @@ export default function registerDevelopedStudioProject(login = '', token = '', p
     }
     LogicalInstanceIdentifier clid = registrations.getCLID()
 
-    println JsonOutput.toJson(clid)
+    println Blobs.createJSONBlobFromValue(clid).getString()
   `;
 }
