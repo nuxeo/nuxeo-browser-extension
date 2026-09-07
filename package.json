@@ -10,7 +10,7 @@
     "just-debounce": "^1.1.0",
     "magic-string": "^0.30.10",
     "nuxeo": "^4.0.5",
-    "sweetalert2": "^11.12.2",
+    "sweetalert2": "^11.23.0",
     "webextension-polyfill": "^0.10.0"
   },
   "devDependencies": {
